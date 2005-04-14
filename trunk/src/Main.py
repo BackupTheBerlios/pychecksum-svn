@@ -8,105 +8,20 @@ import gtk
 from gobject import idle_add as idle_add
 import gtk.glade
 import os.path
-import md5
 from optparse import OptionParser
+
+from Md5File import *
 
 filesize = os.path.getsize
 
-def size2human(size):
-	if size > 1000000000:
-		return '%.2gG' % (size/1000000000.)
-	elif size > 1000000:
-		return '%.2gM' % (size/1000000.)
-	elif size > 1000:
-		return '%.2gK' % (size/1000.)
-	return str(size)
-	
-class Md5File(object):
-	def __init__(self, filename):
-		self._filename = filename
-		self._files = None
-		self._bytes = None
-		self._good = 0
-		self._bad = 0
-		self._missing = 0
-	
-	def _read_size(self):
-		self.getFiles() # make sure the md5 was read
-		files = self._files
-		bytes = 0
-		missing = 0
-		
-		for sum, name in files.items():
-			try:
-				bytes += os.path.getsize(name)
-			except os.error:
-				missing += 1
-				del files[sum] # we remove them so we don't check for them a second time
-				
-		self._missing = missing
-		self._bytes = bytes
-		
-	def _read_contents(self):
-		dirname = os.path.dirname(self._filename)
-		files = {}
-		f = file(self._filename)
-		for line in f:
-			sum = line[:32]
-			name = line[34:-1].strip() # we ignore the binary flag
-			files[sum] = os.path.join(dirname, name)
-		f.close()
-		
-		self._good = 0
-		self._bad = 0
-		self._files = files
-		
-	def getFiles(self):
-		if self._files == None:
-			self._read_contents()
-		return len(self._files)
-		
-	def getBytes(self):
-		if self._bytes == None:
-			self._read_size()
-		return self._bytes
-		
-	def _compute_md5(self, name):
-		f = file(name)
-		m = md5.new()
-		line_size = 100000
-		l = f.read(line_size)
-		while l != '':
-			m.update(l)
-			l = f.read(line_size)
-		return m.hexdigest()
-		
-	def verify(self):
-		for osum, name in self._files.items():
-			csum = self._compute_md5(name)
-			if csum == osum:
-				self._good += 1
-			else:
-				self._bad += 1
-			yield os.path.getsize(name)
-		yield -1
-		return
-		
-	files = property(getFiles)
-	bytes = property(getBytes)
-	good = property(lambda self: self._good)
-	bad = property(lambda self: self._bad)
-	missing = property(lambda self: self._missing)
-	filename = property(lambda self: self._filename)
-		
 class MainWindow:
 	def __init__(self):
 		glade_path = os.path.join(GLADE_DIR, GLADE_FILE)
 		xml = gtk.glade.XML(glade_path, 'main')
-		self.expose_glade(xml)
+		self.export_glade(xml)
 		self.tries = 0
 		
-	def expose_glade(self, xml):
+	def export_glade(self, xml):
 		xml.signal_autoconnect(self)
 		self.xml = xml
 		self.window = xml.get_widget('main')
@@ -185,7 +100,7 @@ class MainWindow:
 		
 	def check_md5_sum(self, filename):
 		"""Cheks a file using idle time."""
-		self.window.set_title('Checking: ' + filename)
+		self.window.set_title('Checking: ' + os.path.abspath(filename))
 		yield True # let the appliction start
 		
 		md5file = Md5File(filename)
@@ -202,18 +117,11 @@ class MainWindow:
 		verify = md5file.verify()
 		tfiles = float(md5file.files)
 		tbytes = float(md5file.bytes)
-		vfiles = 0
-		vbytes = 0
 		if tbytes > 0 and tfiles > 0:
-			while True:
-				bytes = verify.next()
-				if bytes == -1:
-					break
-				vfiles += 1
-				vbytes += bytes
+			while verify.next():
 				self.show_md5_status(md5file)
-				self.show_progress(self.progress_files, vfiles / tfiles)
-				self.show_progress(self.progress_bytes, vbytes / tbytes)
+				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
+				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
 				yield True
 		else:
 			print 'nothing to check'
