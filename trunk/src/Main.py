@@ -20,7 +20,6 @@ class MainWindow:
 		glade_path = os.path.join(GLADE_DIR, GLADE_FILE)
 		xml = gtk.glade.XML(glade_path, 'main')
 		self.export_glade(xml)
-		self.tries = 0
 		
 	def export_glade(self, xml):
 		xml.signal_autoconnect(self)
@@ -60,12 +59,8 @@ class MainWindow:
 			self.window.resize(width, height)
 		
 	def on_main_delete_event(self, widget, event):
-		self.tries -= 1
-		if self.tries > 0:
-			return True
-		else:
-			gtk.main_quit()
-			return False
+		gtk.main_quit()
+		return False
 
 	def show_files(self, files):		
 		self.label_files.set_markup('<b>%d</b>' % files)
@@ -104,6 +99,7 @@ class MainWindow:
 		print 'Good:      ', md5file.good
 		print 'Bad:       ', md5file.bad
 		print 'Missing:   ', md5file.missing
+		print 'Time:      ', md5file.elapsed
 		print '***********************************'
 		if md5file.missing == 0 and md5file.bad == 0:
 			print 'ALL FILES ARE OK'
@@ -118,7 +114,7 @@ class MainWindow:
 		self.window.set_title('Checking: ' + os.path.abspath(filename))
 		yield True # let the appliction start
 		
-		md5file = Md5File(filename)
+		md5file = Md5File(filename, self.treeview_details)
 		self.show_files(md5file.files)
 		self.show_bytes(0)
 		self.show_md5_status(md5file)

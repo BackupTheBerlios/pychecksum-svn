@@ -1,6 +1,7 @@
 #! /usr/bin/python
 # -*- coding: iso-8859-15 -*-
 
+import gtk
 import md5
 import os.path
 from time import time
@@ -25,7 +26,8 @@ def size2human(size):
 	return str(size)
 	
 class Md5File(object):
-	def __init__(self, filename):
+	def __init__(self, filename, treeview):
+		self._init_treeview(treeview)
 		self._filename = filename
 		self._files = None
 		self._bytes = None
@@ -34,18 +36,39 @@ class Md5File(object):
 		self._missing = 0
 		self._start = 0
 	
+	def _init_treeview(self, treeview):
+		self._treeview = treeview
+		self._model = gtk.ListStore(str, str)
+		
+		col = gtk.TreeViewColumn('MD5')
+		col.set_sort_column_id(0)
+		cell = gtk.CellRendererPixbuf()
+		col.pack_start(cell, True)
+		col.add_attribute(cell, 'stock-id', 0)
+		treeview.append_column(col)
+		
+		col = gtk.TreeViewColumn('File')
+		col.set_sort_column_id(1)
+		cell = gtk.CellRendererText()
+		col.pack_start(cell, True)
+		col.add_attribute(cell, 'text', 1)
+		treeview.append_column(col)
+		
+		treeview.set_model(self._model)
+		
 	def _read_size(self):
 		self.get_files() # make sure the md5 was read
 		files = self._files
 		bytes = 0
 		missing = 0
 		
-		for sum, name in files.items():
+		for name, (sum, iter) in files.items():
 			try:
 				bytes += os.path.getsize(name)
 			except os.error:
 				missing += 1
-				del files[sum] # we remove them so we don't check for them a second time
+				self._model.set_value(iter, 0, gtk.STOCK_MISSING_IMAGE)
+				del files[name] # we remove them so we don't check for them a second time
 				
 		self._missing = missing
 		self._bytes = bytes
@@ -57,7 +80,9 @@ class Md5File(object):
 		for line in f:
 			sum = line[:32]
 			name = line[34:-1].strip() # we ignore the binary flag
-			files[sum] = os.path.join(dirname, name)
+			abs_name = os.path.abspath(os.path.join(dirname, name))
+			iter = self._model.append((None, abs_name))
+			files[abs_name] = (sum, iter)
 		f.close()
 		
 		self._vbytes = 0
@@ -114,7 +139,7 @@ class Md5File(object):
 		self._start = time()
 		self._vbytes = 0
 		self._vfiles = 0
-		for osum, name in self._files.items():
+		for name, (osum, iter) in self._files.items():
 			generator = self._compute_md5(name)
 			csum = generator.next()
 			while csum == None:
@@ -123,8 +148,11 @@ class Md5File(object):
 				
 			if csum == osum:
 				self._good += 1
+				self._model.set_value(iter, 0, gtk.STOCK_APPLY)
 			else:
 				self._bad += 1
+				self._model.set_value(iter, 0, gtk.STOCK_CANCEL)
+				
 		yield False
 
 	files = property(get_files)

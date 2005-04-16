@@ -400,7 +400,7 @@
 	<widget class="GtkExpander" id="expander_details">
 	  <property name="visible">True</property>
 	  <property name="can_focus">True</property>
-	  <property name="expanded">False</property>
+	  <property name="expanded">True</property>
 	  <property name="spacing">0</property>
 	  <signal name="activate" handler="on_expander_details_activate" last_modification_time="Tue, 12 Apr 2005 05:13:33 GMT"/>
 
@@ -420,7 +420,7 @@
 		  <property name="headers_visible">True</property>
 		  <property name="rules_hint">False</property>
 		  <property name="reorderable">False</property>
-		  <property name="enable_search">False</property>
+		  <property name="enable_search">True</property>
 		</widget>
 	      </child>
 	    </widget>
