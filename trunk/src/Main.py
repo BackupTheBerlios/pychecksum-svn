@@ -9,6 +9,7 @@ from gobject import idle_add as idle_add
 import gtk.glade
 import os.path
 from optparse import OptionParser
+import sys
 
 from Md5File import *
 
@@ -24,16 +25,24 @@ class MainWindow:
 	def export_glade(self, xml):
 		xml.signal_autoconnect(self)
 		self.xml = xml
+		
 		self.window = xml.get_widget('main')
+		self.vbox = xml.get_widget('vbox')
+		
 		self.progress_files = xml.get_widget('progress_files')
 		self.progress_bytes = xml.get_widget('progress_bytes')
+		
 		self.label_files = xml.get_widget('label_files')
 		self.label_bad = xml.get_widget('label_bad')
 		self.label_good = xml.get_widget('label_good')
 		self.label_missing = xml.get_widget('label_missing')
 		self.label_bytes = xml.get_widget('label_bytes')
-		self.vbox = xml.get_widget('vbox')
+		self.label_elapsed = xml.get_widget('label_elapsed')
+		self.label_estimated = xml.get_widget('label_estimated')
+		self.label_remaining = xml.get_widget('label_remaining')
+		
 		self.treeview_details = xml.get_widget('treeview_details')
+		
 		self.scrolledwindow_details = xml.get_widget('scrolledwindow_details')
 		self.scrolledwindow_height = -1
 		
@@ -73,7 +82,13 @@ class MainWindow:
 	def show_missing(self, missing):
 		self.label_missing.set_markup("<span foreground='#888800'>%d</span>" % missing)
 		
+	def show_time(self, label, s):
+		label.set_markup("<b>%s</b>" % s)
+	
 	def show_md5_status(self, md5file):
+		self.show_time(self.label_elapsed, md5file.elapsed)
+		self.show_time(self.label_estimated, md5file.estimated)
+		self.show_time(self.label_remaining, md5file.remaining)
 		self.show_bad(md5file.bad)
 		self.show_good(md5file.good)
 		
@@ -151,4 +166,7 @@ def main():
 		gtk.main()
 	
 if __name__ == '__main__':
+	moduledir = os.path.dirname(__file__)
+	sys.path.append(moduledir)
+	GLADE_DIR = moduledir
 	main()
