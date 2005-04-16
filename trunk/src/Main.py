@@ -42,19 +42,30 @@ class MainWindow:
 		
 		self.treeview_details = xml.get_widget('treeview_details')
 		
-		self.scrolledwindow_details = xml.get_widget('scrolledwindow_details')
-		self.scrolledwindow_height = -1
+		self.vbox_details = xml.get_widget('vbox_details')
+		self.vbox_details_height = -1
+		
+		self.frame_filter = xml.get_widget('frame_filter')
+		
+	def on_checkbutton_good_toggled(self, btn, *args):
+		self.md5file.filter_good(btn.get_active())
+	
+	def on_checkbutton_bad_toggled(self, btn, *args):
+		self.md5file.filter_bad(btn.get_active())
+		
+	def on_checkbutton_missing_toggled(self, btn, *args):
+		self.md5file.filter_missing(btn.get_active())
 		
 	def on_expander_details_activate(self, widget):
 		if not widget.get_expanded():
 			width, height = self.window.get_size()
 			self.window.set_size_request(-1, -1)
-			self.window.resize(width, height + self.scrolledwindow_height)
+			self.window.resize(width, height + self.vbox_details_height)
 		else:
 			width, height = self.window.get_size()
-			if self.scrolledwindow_details.allocation.height > 1:
-				self.scrolledwindow_height = self.scrolledwindow_details.allocation.height
-			height -= self.scrolledwindow_details.allocation.height
+			if self.vbox_details.allocation.height > 1:
+				self.vbox_details_height = self.vbox_details.allocation.height
+			height -= self.vbox_details.allocation.height
 			self.window.set_size_request(width, height)
 			self.window.resize(width, height)
 		
@@ -138,6 +149,8 @@ class MainWindow:
 			print 'nothing to check'
 		
 		self.print_statistics(md5file)
+		self.frame_filter.set_sensitive(True)
+		self.md5file = md5file
 		yield False
 		
 def main():

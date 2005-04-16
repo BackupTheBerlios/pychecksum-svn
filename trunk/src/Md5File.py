@@ -8,6 +8,9 @@ from time import time
 filesize = os.path.getsize
 
 BUFFER_SIZE = 262144
+STOCK_GOOD = gtk.STOCK_APPLY
+STOCK_BAD = gtk.STOCK_CANCEL
+STOCK_MISSING = gtk.STOCK_MISSING_IMAGE
 
 def time2human(t):
 	m = int(t)/60
@@ -35,6 +38,9 @@ class Md5File(object):
 		self._bad = 0
 		self._missing = 0
 		self._start = 0
+		self._show_good = True
+		self._show_bad = True
+		self._show_missing = True
 	
 	def _init_treeview(self, treeview):
 		self._treeview = treeview
@@ -53,7 +59,7 @@ class Md5File(object):
 		col.pack_start(cell, True)
 		col.add_attribute(cell, 'text', 1)
 		treeview.append_column(col)
-		
+	
 		treeview.set_model(self._model)
 		
 	def _read_size(self):
@@ -67,7 +73,7 @@ class Md5File(object):
 				bytes += os.path.getsize(name)
 			except os.error:
 				missing += 1
-				self._model.set_value(iter, 0, gtk.STOCK_MISSING_IMAGE)
+				self._model.set_value(iter, 0, STOCK_MISSING)
 				del files[name] # we remove them so we don't check for them a second time
 				
 		self._missing = missing
@@ -148,13 +154,46 @@ class Md5File(object):
 				
 			if csum == osum:
 				self._good += 1
-				self._model.set_value(iter, 0, gtk.STOCK_APPLY)
+				self._model.set_value(iter, 0, STOCK_GOOD)
 			else:
 				self._bad += 1
-				self._model.set_value(iter, 0, gtk.STOCK_CANCEL)
+				self._model.set_value(iter, 0, STOCK_BAD)
 				
 		yield False
+		
+	def _filter_row(self, model, path, iter, user_data):
+		new_model, filter = user_data
+		pix_id = model.get(iter, 0)[0]
+		if pix_id in filter:
+			new_model.append((pix_id, model.get(iter, 1)[0]))
+		
+	def _filter(self):
+		filter = []
+		if self._show_good:
+			filter.append(STOCK_GOOD)
+		if self._show_bad:
+			filter.append(STOCK_BAD)
+		if self._show_missing:
+			filter.append(STOCK_MISSING)
+			
+		model = self._model
+		new_model = gtk.ListStore(str, str)
+		if filter != []:
+			model.foreach(self._filter_row, (new_model, filter))
+		self._treeview.set_model(new_model)
+		
+	def filter_good(self, flag):
+		self._show_good = flag
+		self._filter()
 
+	def filter_bad(self, flag):
+		self._show_bad = flag
+		self._filter()
+		
+	def filter_missing(self, flag):
+		self._show_missing = flag
+		self._filter()
+		
 	files = property(get_files)
 	bytes = property(get_bytes)
 	good = property(lambda self: self._good)
