@@ -15,13 +15,13 @@ from Md5File import *
 
 filesize = os.path.getsize
 
-class MainWindow:
-	def __init__(self):
+class BaseWindow(object):
+	def __init__(self, expanded):
 		glade_path = os.path.join(GLADE_DIR, GLADE_FILE)
 		xml = gtk.glade.XML(glade_path, 'main')
-		self.export_glade(xml)
+		self.export_glade(xml, expanded)
 		
-	def export_glade(self, xml):
+	def export_glade(self, xml, expanded):
 		xml.signal_autoconnect(self)
 		self.xml = xml
 		
@@ -30,6 +30,10 @@ class MainWindow:
 		
 		self.progress_files = xml.get_widget('progress_files')
 		self.progress_bytes = xml.get_widget('progress_bytes')
+		
+		self.label_lbad = xml.get_widget('label_lbad')
+		self.label_lgood = xml.get_widget('label_lgood')
+		self.label_lmissing = xml.get_widget('label_lmissing')
 		
 		self.label_files = xml.get_widget('label_files')
 		self.label_bad = xml.get_widget('label_bad')
@@ -47,15 +51,8 @@ class MainWindow:
 		
 		self.frame_filter = xml.get_widget('frame_filter')
 		
-	def on_checkbutton_good_toggled(self, btn, *args):
-		self.md5file.filter_good(btn.get_active())
+		xml.get_widget('expander_details').set_expanded(expanded)
 	
-	def on_checkbutton_bad_toggled(self, btn, *args):
-		self.md5file.filter_bad(btn.get_active())
-		
-	def on_checkbutton_missing_toggled(self, btn, *args):
-		self.md5file.filter_missing(btn.get_active())
-		
 	def on_expander_details_activate(self, widget):
 		if not widget.get_expanded():
 			width, height = self.window.get_size()
@@ -78,6 +75,45 @@ class MainWindow:
 		
 	def show_bytes(self, bytes):
 		self.label_bytes.set_markup('<b>%s</b>' % size2human(bytes))
+
+	def show_time(self, label, s):
+		label.set_markup("<b>%s</b>" % s)
+
+	def show_progress(self, progress, fraction):
+		progress.set_fraction(fraction)
+		progress.set_text('%d %%' % (fraction*100))
+		
+class CreateWindow(BaseWindow):
+	def show_all(self):
+		self.window.show()
+		
+	def create_md5_sum(self, file_list, outfilename):
+		print 'generate sums for', file_list
+		print 'store result in', outfilename
+		yield False
+		
+class VerifyWindow(BaseWindow):
+	def show_all(self):
+		self.label_lbad.show()
+		self.label_lgood.show()
+		self.label_lmissing.show()
+		
+		self.label_good.show()
+		self.label_bad.show()
+		self.label_missing.show()
+		
+		self.frame_filter.show()
+		
+		self.window.show()
+		
+	def on_checkbutton_good_toggled(self, btn, *args):
+		self.md5file.filter_good(btn.get_active())
+	
+	def on_checkbutton_bad_toggled(self, btn, *args):
+		self.md5file.filter_bad(btn.get_active())
+		
+	def on_checkbutton_missing_toggled(self, btn, *args):
+		self.md5file.filter_missing(btn.get_active())
 		
 	def show_bad(self, bad):
 		self.label_bad.set_markup("<span foreground='#880000'>%d</span>" % bad)
@@ -88,19 +124,12 @@ class MainWindow:
 	def show_missing(self, missing):
 		self.label_missing.set_markup("<span foreground='#888800'>%d</span>" % missing)
 		
-	def show_time(self, label, s):
-		label.set_markup("<b>%s</b>" % s)
-	
 	def show_md5_status(self, md5file):
 		self.show_time(self.label_elapsed, md5file.elapsed)
 		self.show_time(self.label_estimated, md5file.estimated)
 		self.show_time(self.label_remaining, md5file.remaining)
 		self.show_bad(md5file.bad)
 		self.show_good(md5file.good)
-		
-	def show_progress(self, progress, fraction):
-		progress.set_fraction(fraction)
-		progress.set_text('%d %%' % (fraction*100))
 		
 	def print_statistics(self, md5file):
 		print '***********************************'
@@ -120,12 +149,12 @@ class MainWindow:
 			print 'There are BAD filles.'
 		print '***********************************'
 		
-	def check_md5_sum(self, filename):
+	def verify_md5_sum(self, filename):
 		"""Cheks a file using idle time."""
 		self.window.set_title('Checking: ' + os.path.abspath(filename))
 		yield True # let the appliction start
 		
-		md5file = Md5File(filename, self.treeview_details)
+		md5file = VerifyMd5File(filename, self.treeview_details)
 		self.show_files(md5file.files)
 		self.show_bytes(0)
 		self.show_md5_status(md5file)
@@ -154,25 +183,31 @@ class MainWindow:
 		yield False
 		
 def main():
-	usage = '%prog [options] (-c FILE | file1 [file2])'
+	usage = '%prog [-x] (-cFILE | [-oFILE] file1 [file2])'
 	parser = OptionParser(usage = usage)
-	parser.add_option("-q", "--quiet",
-		action="store_false", dest="verbose", default=True,
-		help="don't print status messages to stdout")
-	parser.add_option("-c", dest="filename",
+	parser.add_option("-x", action = "store_true", dest="expanded",
+		help="expand the details on stat-up", default = False)
+	parser.add_option("-c", dest="infilename",
 		help="verify checksums stored in FILE", metavar="FILE")
+	parser.add_option("-o", dest="outfilename",
+		help="store checksums in FILE", metavar="FILE")
 
 	(options, args) = parser.parse_args()	
 	
-	if len(args) == 0 and options.filename == None:
-		parser.error('use -c FILE or provide a list of files')
+	if len(args) == 0 and options.infilename == None:
+		parser.error('use -cFILE or provide a list of files')
 
 	# check files against an existing md5sum file
-	if options.filename:
-		w = MainWindow()
-		w.window.show_all()
-		idle_add(w.check_md5_sum(options.filename).next)
-		gtk.main()
+	if options.infilename:
+		w = VerifyWindow(options.expanded)
+		w.show_all()
+		idle_add(w.verify_md5_sum(options.infilename).next)
+	else:
+		w = CreateWindow(options.expanded)
+		w.show_all()
+		idle_add(w.create_md5_sum(args, options.outfilename).next)
+		
+	gtk.main()
 	
 if __name__ == '__main__':
 	moduledir = os.path.dirname(__file__)

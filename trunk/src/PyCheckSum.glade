@@ -22,11 +22,13 @@
   <child>
     <widget class="GtkVBox" id="vbox">
       <property name="border_width">5</property>
+      <property name="visible">True</property>
       <property name="homogeneous">False</property>
       <property name="spacing">5</property>
 
       <child>
 	<widget class="GtkTable" id="table1">
+	  <property name="visible">True</property>
 	  <property name="n_rows">8</property>
 	  <property name="n_columns">2</property>
 	  <property name="homogeneous">False</property>
@@ -35,6 +37,7 @@
 
 	  <child>
 	    <widget class="GtkLabel" id="label_remaining">
+	      <property name="visible">True</property>
 	      <property name="label"></property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -57,6 +60,7 @@
 
 	  <child>
 	    <widget class="GtkLabel" id="label_elapsed">
+	      <property name="visible">True</property>
 	      <property name="label"></property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -79,6 +83,7 @@
 
 	  <child>
 	    <widget class="GtkLabel" id="label_bytes">
+	      <property name="visible">True</property>
 	      <property name="label"></property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -167,6 +172,7 @@
 
 	  <child>
 	    <widget class="GtkLabel" id="label_files">
+	      <property name="visible">True</property>
 	      <property name="label"></property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -188,7 +194,8 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label7">
+	    <widget class="GtkLabel" id="label_lremaining">
+	      <property name="visible">True</property>
 	      <property name="label">&lt;b&gt;Remaining time&lt;/b&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -210,7 +217,8 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label6">
+	    <widget class="GtkLabel" id="label_lelapsed">
+	      <property name="visible">True</property>
 	      <property name="label">&lt;b&gt;Elapsed time&lt;/b&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -232,7 +240,8 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label5">
+	    <widget class="GtkLabel" id="label_lbytes">
+	      <property name="visible">True</property>
 	      <property name="label">&lt;b&gt;Bytes&lt;/b&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -254,7 +263,7 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label4">
+	    <widget class="GtkLabel" id="label_lmissing">
 	      <property name="label">&lt;span foreground=&quot;#888800&quot;&gt;Missing&lt;/span&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -276,7 +285,7 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label3">
+	    <widget class="GtkLabel" id="label_lbad">
 	      <property name="label">&lt;span foreground=&quot;#880000&quot;&gt;Bad&lt;/span&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -298,7 +307,7 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label2">
+	    <widget class="GtkLabel" id="label_lgood">
 	      <property name="label">&lt;span foreground=&quot;#008800&quot;&gt;Good&lt;/span&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -320,7 +329,8 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label1">
+	    <widget class="GtkLabel" id="label_lfiles">
+	      <property name="visible">True</property>
 	      <property name="label">&lt;b&gt;Files&lt;/b&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
@@ -342,7 +352,7 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkLabel" id="label9">
+	    <widget class="GtkLabel" id="label_ltotal">
 	      <property name="visible">True</property>
 	      <property name="label" translatable="yes">&lt;b&gt;Total time&lt;/b&gt;</property>
 	      <property name="use_underline">False</property>
@@ -439,7 +449,6 @@
 
 	      <child>
 		<widget class="GtkFrame" id="frame_filter">
-		  <property name="visible">True</property>
 		  <property name="sensitive">False</property>
 		  <property name="label_xalign">0</property>
 		  <property name="label_yalign">0.5</property>
@@ -584,6 +593,7 @@
 
       <child>
 	<widget class="GtkProgressBar" id="progress_files">
+	  <property name="visible">True</property>
 	  <property name="orientation">GTK_PROGRESS_LEFT_TO_RIGHT</property>
 	  <property name="fraction">0</property>
 	  <property name="pulse_step">0.10000000149</property>
@@ -597,6 +607,7 @@
 
       <child>
 	<widget class="GtkProgressBar" id="progress_bytes">
+	  <property name="visible">True</property>
 	  <property name="orientation">GTK_PROGRESS_LEFT_TO_RIGHT</property>
 	  <property name="fraction">0</property>
 	  <property name="pulse_step">0.10000000149</property>
