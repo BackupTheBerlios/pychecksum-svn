@@ -83,14 +83,56 @@ class BaseWindow(object):
 		progress.set_fraction(fraction)
 		progress.set_text('%d %%' % (fraction*100))
 		
+	def show_md5_status(self, md5file):
+		self.show_time(self.label_elapsed, md5file.elapsed)
+		self.show_time(self.label_estimated, md5file.estimated)
+		self.show_time(self.label_remaining, md5file.remaining)
+		
 class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
 		
-	def create_md5_sum(self, file_list, outfilename):
-		print 'generate sums for', file_list
-		print 'store result in', outfilename
+	def create_md5_sum(self, file_list, outfilename, ignore_dirs):
+		self.window.set_title('Creating MD5 sums...')
+		yield True # let the appliction start
+		
+		md5file = CreateMd5File(outfilename, self.treeview_details, file_list, ignore_dirs)
+		self.show_files(md5file.files)
+		self.show_bytes(0)
+		self.show_md5_status(md5file)
+		yield True
+
+		self.show_bytes(md5file.bytes) # force reading the sizes
+		self.show_md5_status(md5file)
+		
+##		# here we are finaly verifying the files
+##		verify = md5file.verify()
+##		tfiles = float(md5file.files)
+##		tbytes = float(md5file.bytes)
+##		if tbytes > 0 and tfiles > 0:
+##			while verify.next():
+##				self.show_md5_status(md5file)
+##				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
+##				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
+##				yield True
+##		else:
+##			print 'nothing to check'
+		
+		self.print_statistics(md5file)
+		self.md5file = md5file
 		yield False
+		
+	def print_statistics(self, md5file):
+		print '***********************************'
+		if md5file.filename:
+			print 'Status for:', os.path.abspath(md5file.filename)
+		else:
+			print 'Status for: results not saved'
+		print '***********************************'
+		print 'Files:     ', md5file.files
+		print 'Bytes:     ', md5file.bytes
+		print 'Time:      ', md5file.elapsed
+		print '***********************************'
 		
 class VerifyWindow(BaseWindow):
 	def show_all(self):
@@ -125,9 +167,7 @@ class VerifyWindow(BaseWindow):
 		self.label_missing.set_markup("<span foreground='#888800'>%d</span>" % missing)
 		
 	def show_md5_status(self, md5file):
-		self.show_time(self.label_elapsed, md5file.elapsed)
-		self.show_time(self.label_estimated, md5file.estimated)
-		self.show_time(self.label_remaining, md5file.remaining)
+		BaseWindow.show_md5_status(self, md5file)
 		self.show_bad(md5file.bad)
 		self.show_good(md5file.good)
 		
@@ -185,6 +225,8 @@ class VerifyWindow(BaseWindow):
 def main():
 	usage = '%prog [-x] (-cFILE | [-oFILE] file1 [file2])'
 	parser = OptionParser(usage = usage)
+	parser.add_option("-d", dest="ignore_dirs", action = "append",
+		help="ignore given dir", metavar="DIR", default = [])
 	parser.add_option("-x", action = "store_true", dest="expanded",
 		help="expand the details on stat-up", default = False)
 	parser.add_option("-c", dest="infilename",
@@ -205,7 +247,7 @@ def main():
 	else:
 		w = CreateWindow(options.expanded)
 		w.show_all()
-		idle_add(w.create_md5_sum(args, options.outfilename).next)
+		idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs).next)
 		
 	gtk.main()
 	

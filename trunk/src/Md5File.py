@@ -5,7 +5,12 @@ import gtk
 import md5
 import os.path
 from time import time
+
 filesize = os.path.getsize
+isfile = os.path.isfile
+isdir = os.path.isdir
+abspath = os.path.abspath
+join = os.path.join
 
 BUFFER_SIZE = 262144
 STOCK_GOOD = gtk.STOCK_APPLY
@@ -35,8 +40,7 @@ class BaseMd5File(object):
 		self._files = None
 		self._bytes = None
 		self._start = 0
-		self._show_good = True
-		self._show_bad = True
+		self._missing = 0
 		self._show_missing = True
 	
 	def _init_treeview(self, treeview):
@@ -58,6 +62,23 @@ class BaseMd5File(object):
 		treeview.append_column(col)
 	
 		treeview.set_model(self._model)
+		
+	def _read_size(self):
+		self.get_files() # make sure the md5 was read
+		files = self._files
+		bytes = 0
+		missing = 0
+		
+		for name, (sum, iter) in files.items():
+			try:
+				bytes += os.path.getsize(name)
+			except os.error:
+				missing += 1
+				self._model.set_value(iter, 0, STOCK_MISSING)
+				del files[name] # we remove them so we don't check for them a second time
+				
+		self._missing = missing
+		self._bytes = bytes
 		
 	def get_files(self):
 		if self._files == None:
@@ -107,6 +128,7 @@ class BaseMd5File(object):
 	bytes = property(get_bytes)
 	filename = property(lambda self: self._filename)
 
+	missing = property(lambda self: self._missing)
 	vfiles = property(lambda self: self._vfiles)
 	vbytes = property(lambda self: self._vbytes)
 	elapsed = property(get_elapsed)
@@ -118,24 +140,8 @@ class VerifyMd5File(BaseMd5File):
 		BaseMd5File.__init__(self, filename, treeview)
 		self._good = 0
 		self._bad = 0
-		self._missing = 0
-		
-	def _read_size(self):
-		self.get_files() # make sure the md5 was read
-		files = self._files
-		bytes = 0
-		missing = 0
-		
-		for name, (sum, iter) in files.items():
-			try:
-				bytes += os.path.getsize(name)
-			except os.error:
-				missing += 1
-				self._model.set_value(iter, 0, STOCK_MISSING)
-				del files[name] # we remove them so we don't check for them a second time
-				
-		self._missing = missing
-		self._bytes = bytes
+		self._show_good = True
+		self._show_bad = True
 		
 	def _read_contents(self):
 		dirname = os.path.dirname(self._filename)
@@ -211,4 +217,39 @@ class VerifyMd5File(BaseMd5File):
 		
 	good = property(lambda self: self._good)
 	bad = property(lambda self: self._bad)
-	missing = property(lambda self: self._missing)
+
+class CreateMd5File(BaseMd5File):
+	def __init__(self, filename, treeview, file_list, ignore_dirs):
+		BaseMd5File.__init__(self, filename, treeview)
+		self._file_list = file_list
+		self._ignore_dirs = ignore_dirs
+		
+	def _add_file(self, name):
+		abs_name = abspath(name)
+		iter = self._model.append((None, abs_name))
+		self._files[abs_name] = (None, iter)
+		
+	def _filter_dirs(self, dirs):
+		for ignore in self._ignore_dirs:
+			if ignore in dirs:
+				dirs.remove(ignore)
+				
+	def _read_contents_dir(self, base_dir):
+		for root, dirs, files in os.walk(base_dir):
+			for name in files:
+				self._add_file(join(root, name))
+			self._filter_dirs(dirs)
+				
+	def _read_contents(self):
+		self._files = {}
+		for name in self._file_list:
+			if isfile(name):
+				self._add_file(name)
+			elif isdir(name):
+				self._read_contents_dir(name)
+			else:
+				print "Can't find file or dir: '%s'" % name
+				self._model.append((STOCK_MISSING, name))
+				
+		self._vbytes = 0
+		self._vfiles = 0
