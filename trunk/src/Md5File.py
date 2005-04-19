@@ -1,16 +1,13 @@
 #! /usr/bin/python
 # -*- coding: iso-8859-15 -*-
 
+import sys
 import gtk
 import md5
 import os.path
 from time import time
-
-filesize = os.path.getsize
-isfile = os.path.isfile
-isdir = os.path.isdir
-abspath = os.path.abspath
-join = os.path.join
+from os import sep, altsep
+from os.path import getsize, isfile, isdir, abspath, join, commonprefix
 
 BUFFER_SIZE = 262144
 STOCK_GOOD = gtk.STOCK_APPLY
@@ -26,11 +23,11 @@ def time2human(t):
 	
 def size2human(size):
 	if size > 1000000000:
-		return '%.2gG' % (size/1000000000.)
+		return '%.2fG' % (size/1000000000.)
 	elif size > 1000000:
-		return '%.2gM' % (size/1000000.)
+		return '%.2fM' % (size/1000000.)
 	elif size > 1000:
-		return '%.2gK' % (size/1000.)
+		return '%.2fK' % (size/1000.)
 	return str(size)
 	
 class BaseMd5File(object):
@@ -69,7 +66,9 @@ class BaseMd5File(object):
 		bytes = 0
 		missing = 0
 		
-		for name, (sum, iter) in files.items():
+		for name, value in files.items():
+			sum = value[0]
+			iter = value[1]
 			try:
 				bytes += os.path.getsize(name)
 			except os.error:
@@ -219,29 +218,49 @@ class VerifyMd5File(BaseMd5File):
 	bad = property(lambda self: self._bad)
 
 class CreateMd5File(BaseMd5File):
-	def __init__(self, filename, treeview, file_list, ignore_dirs):
+	def __init__(self, filename, treeview, file_list, ignore_dirs, basedir):
 		BaseMd5File.__init__(self, filename, treeview)
 		self._file_list = file_list
 		self._ignore_dirs = ignore_dirs
+		if basedir and isdir(basedir):
+			self._basedir = abspath(basedir)
+		else:
+			self._basedir = ""
 		
-	def _add_file(self, name):
+	def _rel_path(self, name, basedir):
+		abs_base = abspath(os.path.dirname(basedir))
 		abs_name = abspath(name)
-		iter = self._model.append((None, abs_name))
-		self._files[abs_name] = (None, iter)
+		c = commonprefix((abs_name, abs_base))
+		if c:
+			m = abs_name[len(c):]
+			if m[0] in (sep, altsep):
+				m = m[1:]
+		else:
+			m = abs_name
+		return m
+		
+	def _add_file(self, name, basedir):
+		rel_name = self._rel_path(name, basedir)
+		iter = self._model.append((None, rel_name))
+		self._files[name] = (None, iter, rel_name)
+		self._ordered.append(name)
 		
 	def _filter_dirs(self, dirs):
 		for ignore in self._ignore_dirs:
 			if ignore in dirs:
 				dirs.remove(ignore)
 				
-	def _read_contents_dir(self, base_dir):
-		for root, dirs, files in os.walk(base_dir):
+	def _read_contents_dir(self, basedir):
+		for root, dirs, files in os.walk(basedir):
+			files.sort()
+			dirs.sort()
 			for name in files:
-				self._add_file(join(root, name))
+				self._add_file(join(root, name), basedir)
 			self._filter_dirs(dirs)
 				
 	def _read_contents(self):
 		self._files = {}
+		self._ordered = []
 		for name in self._file_list:
 			if isfile(name):
 				self._add_file(name)
@@ -253,3 +272,28 @@ class CreateMd5File(BaseMd5File):
 				
 		self._vbytes = 0
 		self._vfiles = 0
+
+	def create(self):
+		self._start = time()
+		self._vbytes = 0
+		self._vfiles = 0
+		
+		if self._filename:
+			f = file(self._filename, "w+")
+		else:
+			f = sys.stdout
+			
+		for name in self._ordered:
+			(osum, iter, relname) = self._files[name]
+			generator = self._compute_md5(name)
+			csum = generator.next()
+			while csum == None:
+				csum = generator.next()
+				yield True
+				
+			f.write("%s  %s\n" % (csum, relname))
+				
+		if self._filename:
+			f.close()
+			
+		yield False

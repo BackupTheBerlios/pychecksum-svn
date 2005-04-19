@@ -92,11 +92,11 @@ class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
 		
-	def create_md5_sum(self, file_list, outfilename, ignore_dirs):
+	def create_md5_sum(self, file_list, outfilename, ignore_dirs, basedir):
 		self.window.set_title('Creating MD5 sums...')
 		yield True # let the appliction start
 		
-		md5file = CreateMd5File(outfilename, self.treeview_details, file_list, ignore_dirs)
+		md5file = CreateMd5File(outfilename, self.treeview_details, file_list, ignore_dirs, basedir)
 		self.show_files(md5file.files)
 		self.show_bytes(0)
 		self.show_md5_status(md5file)
@@ -105,18 +105,18 @@ class CreateWindow(BaseWindow):
 		self.show_bytes(md5file.bytes) # force reading the sizes
 		self.show_md5_status(md5file)
 		
-##		# here we are finaly verifying the files
-##		verify = md5file.verify()
-##		tfiles = float(md5file.files)
-##		tbytes = float(md5file.bytes)
-##		if tbytes > 0 and tfiles > 0:
-##			while verify.next():
-##				self.show_md5_status(md5file)
-##				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
-##				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
-##				yield True
-##		else:
-##			print 'nothing to check'
+		# here we are finaly verifying the files
+		create = md5file.create()
+		tfiles = float(md5file.files)
+		tbytes = float(md5file.bytes)
+		if tbytes > 0 and tfiles > 0:
+			while create.next():
+				self.show_md5_status(md5file)
+				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
+				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
+				yield True
+		else:
+			print 'nothing to create'
 		
 		self.print_statistics(md5file)
 		self.md5file = md5file
@@ -223,7 +223,7 @@ class VerifyWindow(BaseWindow):
 		yield False
 		
 def main():
-	usage = '%prog [-x] (-cFILE | [-oFILE] file1 [file2])'
+	usage = '%prog [-x] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
 	parser = OptionParser(usage = usage)
 	parser.add_option("-d", dest="ignore_dirs", action = "append",
 		help="ignore given dir", metavar="DIR", default = [])
@@ -233,6 +233,8 @@ def main():
 		help="verify checksums stored in FILE", metavar="FILE")
 	parser.add_option("-o", dest="outfilename",
 		help="store checksums in FILE", metavar="FILE")
+	parser.add_option("-b", dest="basedir",
+		help="compute paths relative to PATH", metavar="PATH")
 
 	(options, args) = parser.parse_args()	
 	
@@ -247,7 +249,7 @@ def main():
 	else:
 		w = CreateWindow(options.expanded)
 		w.show_all()
-		idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs).next)
+		idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
 		
 	gtk.main()
 	
