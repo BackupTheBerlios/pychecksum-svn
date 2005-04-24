@@ -2,6 +2,8 @@
 <!DOCTYPE glade-interface SYSTEM "http://glade.gnome.org/glade-2.0.dtd">
 
 <glade-interface>
+<requires lib="gnome"/>
+<requires lib="bonobo"/>
 
 <widget class="GtkWindow" id="main">
   <property name="title"></property>
@@ -11,7 +13,8 @@
   <property name="default_width">440</property>
   <property name="resizable">True</property>
   <property name="destroy_with_parent">False</property>
-  <property name="role"></property>
+  <property name="icon">Icon.png</property>
+  <property name="role">PyCheckSumGtk</property>
   <property name="decorated">True</property>
   <property name="skip_taskbar_hint">False</property>
   <property name="skip_pager_hint">False</property>
@@ -619,6 +622,39 @@
 	</packing>
       </child>
     </widget>
+  </child>
+</widget>
+
+<widget class="GnomeApp" id="mainGnome">
+  <property name="type">GTK_WINDOW_TOPLEVEL</property>
+  <property name="window_position">GTK_WIN_POS_NONE</property>
+  <property name="modal">False</property>
+  <property name="resizable">True</property>
+  <property name="destroy_with_parent">False</property>
+  <property name="icon">Icon.png</property>
+  <property name="role">PyCheckSumGnome</property>
+  <property name="decorated">True</property>
+  <property name="skip_taskbar_hint">False</property>
+  <property name="skip_pager_hint">False</property>
+  <property name="type_hint">GDK_WINDOW_TYPE_HINT_NORMAL</property>
+  <property name="gravity">GDK_GRAVITY_NORTH_WEST</property>
+  <property name="enable_layout_config">True</property>
+  <signal name="delete_event" handler="on_main_delete_event" last_modification_time="Sat, 23 Apr 2005 05:40:14 GMT"/>
+
+  <child internal-child="dock">
+    <widget class="BonoboDock" id="bonobodock">
+      <property name="visible">True</property>
+      <property name="allow_floating">True</property>
+
+      <child>
+	<placeholder/>
+      </child>
+    </widget>
+    <packing>
+      <property name="padding">0</property>
+      <property name="expand">True</property>
+      <property name="fill">True</property>
+    </packing>
   </child>
 </widget>
 

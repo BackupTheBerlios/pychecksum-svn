@@ -3,6 +3,9 @@
 
 GLADE_DIR = ""
 GLADE_FILE = "PyCheckSum.glade"
+INTERFACE_GNOME = "gnome"
+INTERFACE_GTK = "gtk"
+INTERFACE_WIN = "win32"
 
 import gtk
 from gobject import idle_add as idle_add
@@ -10,16 +13,82 @@ import gtk.glade
 import os.path
 from optparse import OptionParser
 import sys
+from xml.dom.minidom import parse as dom_parse
+from xml.xpath import Evaluate
 
 from Md5File import *
 
 filesize = os.path.getsize
 
-class BaseWindow(object):
-	def __init__(self, expanded):
+def get_elements_by_attribute(node, name, d):
+	elements = []
+	for c in node.childNodes:
+		if c.nodeType == c.ELEMENT_NODE and c.tagName == name:
+			append = True
+			for attr, value in d.iteritems():
+				if c.hasAttribute(attr) == False or c.getAttribute(attr) != value:
+					append = False
+					break
+			if append:
+				elements.append(c)
+	return elements
+
+def set_glade_icon(node):
+	try:
+		xml_icon = get_elements_by_attribute(node, "property", {"name":"icon"})[0]
 		glade_path = os.path.join(GLADE_DIR, GLADE_FILE)
-		xml = gtk.glade.XML(glade_path, 'main')
+		file_name = os.path.join(os.path.dirname(glade_path), xml_icon.childNodes[0].nodeValue)
+		xml_icon.childNodes[0].nodeValue = file_name
+		return file_name
+	except:
+		return ""
+	
+class BaseWindow(object):
+	def __init__(self, expanded, interface):
+		xml = self._read_glade(interface)
 		self.export_glade(xml, expanded)
+		
+	def _read_glade(self, interface):
+		glade_path = os.path.join(GLADE_DIR, GLADE_FILE)
+		if interface == INTERFACE_GNOME:
+			try:
+				xml_doc = dom_parse(glade_path)
+				xml_glade_interface = xml_doc.getElementsByTagName("glade-interface")[0]
+				xml_gnome_main = get_elements_by_attribute(xml_glade_interface, "widget", {"class":"GnomeApp"})[0]
+				
+				set_glade_icon(xml_gnome_main)
+				
+				xml_main = get_elements_by_attribute(xml_glade_interface, "widget", {"class":"GtkWindow", "id":"main"})[0]
+				xml_vbox = get_elements_by_attribute(xml_main.getElementsByTagName("child")[0], "widget", {"class":"GtkVBox", "id":"vbox"})[0]
+				
+				xml_placeholder = xml_gnome_main.getElementsByTagName("placeholder")[0]
+				xml_gnome_child = xml_placeholder.parentNode
+				
+				xml_gnome_child.replaceChild(xml_vbox, xml_placeholder)
+				xml_glade_interface.removeChild(xml_main)
+				
+				xml_gnome_main.attributes["id"].nodeValue = "main"
+				
+				xml_buf = xml_doc.toxml()
+				
+				import gnome
+				gnome.program_init("PyCheckSum", "0.1")
+				xml = gtk.glade.xml_new_from_buffer(xml_buf, len(xml_buf), 'main')
+			except:
+				print "Can't start as gnome app. Retrying as simple Gtk app..."
+				return self._read_glade(INTERFACE_GTK)
+		else:
+			xml_doc = dom_parse(glade_path)
+			xml_glade_interface = xml_doc.getElementsByTagName("glade-interface")[0]
+			xml_glade_interface.removeChild(get_elements_by_attribute(xml_glade_interface, "widget", {"class":"GnomeApp"})[0])
+			xml_glade_interface.removeChild(get_elements_by_attribute(xml_glade_interface, "requires", {"lib":"gnome"})[0])
+			xml_glade_interface.removeChild(get_elements_by_attribute(xml_glade_interface, "requires", {"lib":"bonobo"})[0])
+			
+			set_glade_icon(get_elements_by_attribute(xml_glade_interface, "widget", {"class":"GtkWindow", "id":"main"})[0])
+			
+			xml_buf = xml_doc.toxml()
+			xml = gtk.glade.xml_new_from_buffer(xml_buf, len(xml_buf), 'main')
+		return xml
 		
 	def export_glade(self, xml, expanded):
 		xml.signal_autoconnect(self)
@@ -223,8 +292,16 @@ class VerifyWindow(BaseWindow):
 		yield False
 		
 def main():
-	usage = '%prog [-x] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
+	usage = '%prog [-x] [-g|-w] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
 	parser = OptionParser(usage = usage)
+	
+	# the interface 
+	parser.add_option("-g", "--gnome", action = "store_const", 
+		const = INTERFACE_GNOME, dest="interface", help="use the gnome interface")
+	parser.add_option("-w", "--win", action = "store_const",
+		const = INTERFACE_WIN, dest="interface", help="use the win32 interface")
+	parser.set_defaults(interface = INTERFACE_GTK)
+		
 	parser.add_option("-d", dest="ignore_dirs", action = "append",
 		help="ignore given dir", metavar="DIR", default = [])
 	parser.add_option("-x", action = "store_true", dest="expanded",
@@ -243,18 +320,18 @@ def main():
 
 	# check files against an existing md5sum file
 	if options.infilename:
-		w = VerifyWindow(options.expanded)
+		w = VerifyWindow(options.expanded, options.interface)
 		w.show_all()
 		idle_add(w.verify_md5_sum(options.infilename).next)
 	else:
-		w = CreateWindow(options.expanded)
+		w = CreateWindow(options.expanded, options.interface)
 		w.show_all()
 		idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
 		
 	gtk.main()
 	
 if __name__ == '__main__':
-	moduledir = os.path.dirname(__file__)
+	moduledir = os.path.abspath(os.path.dirname(__file__))
 	sys.path.append(moduledir)
 	GLADE_DIR = moduledir
 	main()
