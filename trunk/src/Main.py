@@ -5,7 +5,6 @@ GLADE_DIR = ""
 GLADE_FILE = "PyCheckSum.glade"
 INTERFACE_GNOME = "gnome"
 INTERFACE_GTK = "gtk"
-INTERFACE_WIN = "win32"
 
 import gtk
 from gobject import idle_add as idle_add
@@ -14,7 +13,6 @@ import os.path
 from optparse import OptionParser
 import sys
 from xml.dom.minidom import parse as dom_parse
-from xml.xpath import Evaluate
 
 from Md5File import *
 
@@ -260,7 +258,7 @@ class VerifyWindow(BaseWindow):
 		
 	def verify_md5_sum(self, filename):
 		"""Cheks a file using idle time."""
-		self.window.set_title('Checking: ' + os.path.abspath(filename))
+		self.window.set_title('Checking: %s (from %s)' %(os.path.basename(filename), os.path.dirname(os.path.abspath(filename))))
 		yield True # let the appliction start
 		
 		md5file = VerifyMd5File(filename, self.treeview_details)
@@ -292,14 +290,14 @@ class VerifyWindow(BaseWindow):
 		yield False
 		
 def main():
-	usage = '%prog [-x] [-g|-w] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
+	usage = '%prog [options] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
 	parser = OptionParser(usage = usage)
 	
-	# the interface 
-	parser.add_option("-g", "--gnome", action = "store_const", 
-		const = INTERFACE_GNOME, dest="interface", help="use the gnome interface")
-	parser.add_option("-w", "--win", action = "store_const",
-		const = INTERFACE_WIN, dest="interface", help="use the win32 interface")
+	# the interface
+	# on windows we can't have gnome so we disable all interfac options!
+	if not sys.platform.startswith("win"):
+		parser.add_option("-g", "--gnome", action = "store_const", 
+			const = INTERFACE_GNOME, dest="interface", help="use the gnome interface")
 	parser.set_defaults(interface = INTERFACE_GTK)
 		
 	parser.add_option("-d", dest="ignore_dirs", action = "append",
