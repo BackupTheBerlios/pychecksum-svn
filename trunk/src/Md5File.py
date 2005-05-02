@@ -265,9 +265,10 @@ class CreateMd5File(BaseMd5File):
 	def _read_contents(self):
 		self._files = {}
 		self._ordered = []
+		
 		for name in self._file_list:
 			if isfile(name):
-				self._add_file(name)
+				self._add_file(name, self._basedir)
 			elif isdir(name):
 				self._read_contents_dir(name)
 			else:

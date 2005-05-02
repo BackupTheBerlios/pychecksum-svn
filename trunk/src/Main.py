@@ -290,17 +290,33 @@ class VerifyWindow(BaseWindow):
 		yield False
 		
 def main():
-	usage = '%prog [options] (-cFILE | [-oFILE] [-bPATH] file1 [file2])'
+	platform_win32 = sys.platform.startswith("win")
+
+	if platform_win32:
+		usage = """
+\t%prog [-x] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])
+\t%prog --register
+\t%prog --unregister
+\t%prog (-h|--help)"""
+	else:
+		usage = '%prog [-xg] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])'
 	parser = OptionParser(usage = usage)
-	
+
 	# the interface
 	# on windows we can't have gnome so we disable all interfac options!
-	if not sys.platform.startswith("win"):
+	if not platform_win32:
 		parser.add_option("-g", "--gnome", action = "store_const", 
 			const = INTERFACE_GNOME, dest="interface", help="use the gnome interface")
 	parser.set_defaults(interface = INTERFACE_GTK)
+
+	# on windows, we need to (un)register with the registry
+	if platform_win32:
+		parser.add_option("", "--register", action = "store_true", 
+			dest="register", help="register with the REGISTRY")
+		parser.add_option("", "--unregister", action = "store_true", 
+			dest="unregister", help="unregister from the REGISTRY")
 		
-	parser.add_option("-d", dest="ignore_dirs", action = "append",
+	parser.add_option("-i", dest="ignore_dirs", action = "append",
 		help="ignore given dir", metavar="DIR", default = [])
 	parser.add_option("-x", action = "store_true", dest="expanded",
 		help="expand the details on stat-up", default = False)
@@ -311,22 +327,62 @@ def main():
 	parser.add_option("-b", dest="basedir",
 		help="compute paths relative to PATH", metavar="PATH")
 
-	(options, args) = parser.parse_args()	
+	parser.add_option("-f", dest="singlefile",
+		help="compute PATH's MD5 and store it in PATH.md5", metavar="PATH")
+	parser.add_option("-d", dest="singledir",
+		help="compute PATH's MD5 and store it in PATH.md5", metavar="PATH")
 	
-	if len(args) == 0 and options.infilename == None:
-		parser.error('use -cFILE or provide a list of files')
+	(options, args) = parser.parse_args()	
 
-	# check files against an existing md5sum file
-	if options.infilename:
-		w = VerifyWindow(options.expanded, options.interface)
-		w.show_all()
-		idle_add(w.verify_md5_sum(options.infilename).next)
-	else:
-		w = CreateWindow(options.expanded, options.interface)
-		w.show_all()
-		idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
+	finished = False
+	
+	if platform_win32:
+		import Register
 		
-	gtk.main()
+		# (un)register from registry
+		if options.register and options.unregister:
+			parser.error('please use only one of the --register or --unregister, but not both')
+
+		if options.register:
+			Register.register(os.path.abspath(__file__))
+			finished = True
+		elif options.unregister:
+			Register.unregister()
+			finished = True
+
+	if not finished:
+		if options.singlefile:
+			# create md5 for a single file
+			basedir = os.path.dirname(options.singlefile)
+			outfilename = options.singlefile + ".md5"
+			w = CreateWindow(options.expanded, options.interface)
+			w.show_all()
+			idle_add(w.create_md5_sum([options.singlefile], outfilename, None, basedir).next)
+		elif options.singledir:
+			# create md5 for a single dir
+			basedir = '.'
+			options.singledir = options.singledir.rstrip("\\").rstrip("/").rstrip('"')
+			outfilename = os.path.join(options.singledir, os.path.basename(options.singledir)) + ".md5"
+			os.remove(outfilename)
+			w = CreateWindow(options.expanded, options.interface)
+			w.show_all()
+			idle_add(w.create_md5_sum([options.singledir], outfilename, options.ignore_dirs, basedir).next)
+		else:
+			if len(args) == 0 and options.infilename == None:
+				parser.error('use -cFILE or provide a list of files')
+
+			# check files against an existing md5sum file
+			if options.infilename:
+				w = VerifyWindow(options.expanded, options.interface)
+				w.show_all()
+				idle_add(w.verify_md5_sum(options.infilename).next)
+			else:
+				w = CreateWindow(options.expanded, options.interface)
+				w.show_all()
+				if options.outfilename:
+					os.remove(options.outfilename)
+				idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
+		gtk.main()
 	
 if __name__ == '__main__':
 	moduledir = os.path.abspath(os.path.dirname(__file__))
