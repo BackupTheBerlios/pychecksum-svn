@@ -12,7 +12,7 @@ from os.path import getsize, isfile, isdir, abspath, join, commonprefix
 BUFFER_SIZE = 262144
 STOCK_GOOD = gtk.STOCK_APPLY
 STOCK_BAD = gtk.STOCK_CANCEL
-STOCK_MISSING = gtk.STOCK_MISSING_IMAGE
+STOCK_MISSING = gtk.STOCK_DIALOG_WARNING
 
 def time2human(t):
 	m = int(t)/60
@@ -110,18 +110,22 @@ class BaseMd5File(object):
 		return "0"
 		
 	def _compute_md5(self, name):
-		f = file(name, "rb")
-		m = md5.new()
-		line_size = BUFFER_SIZE
-		l = f.read(line_size)
-		while l != '':
-			m.update(l)
-			self._vbytes += len(l)
+		try:
+			f = file(name, "rb")
+			m = md5.new()
+			line_size = BUFFER_SIZE
 			l = f.read(line_size)
-			yield None
-			
-		self._vfiles += 1
-		yield m.hexdigest()
+			while l != '':
+				m.update(l)
+				self._vbytes += len(l)
+				l = f.read(line_size)
+				yield None
+				
+			self._vfiles += 1
+			yield m.hexdigest()
+		except IOError, e:
+			print e
+			yield ""
 		
 	files = property(get_files)
 	bytes = property(get_bytes)
@@ -228,7 +232,7 @@ class CreateMd5File(BaseMd5File):
 			self._basedir = ""
 		
 	def _rel_path(self, name, basedir):
-		abs_base = abspath(os.path.dirname(basedir))
+		abs_base = abspath(basedir)
 		abs_name = abspath(name)
 		c = commonprefix((abs_name, abs_base))
 		if c:
@@ -291,7 +295,7 @@ class CreateMd5File(BaseMd5File):
 				csum = generator.next()
 				yield True
 				
-			f.write("%s  %s\n" % (csum, relname))
+			f.write("%s  %s\n" % (csum, relname.replace('\\','/')))
 				
 		if self._filename:
 			f.close()
