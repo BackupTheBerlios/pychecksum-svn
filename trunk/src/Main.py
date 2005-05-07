@@ -5,6 +5,8 @@ GLADE_DIR = ""
 GLADE_FILE = "PyCheckSum.glade"
 INTERFACE_GNOME = "gnome"
 INTERFACE_GTK = "gtk"
+ALGO_MD5 = "md5"
+ALGO_SFV = "sfv"
 
 import gtk
 from gobject import idle_add as idle_add
@@ -150,14 +152,18 @@ class BaseWindow(object):
 		progress.set_fraction(fraction)
 		progress.set_text('%d %%' % (fraction*100))
 		
-	def show_md5_status(self, md5file):
-		self.show_time(self.label_elapsed, md5file.elapsed)
-		self.show_time(self.label_estimated, md5file.estimated)
-		self.show_time(self.label_remaining, md5file.remaining)
+	def show_status(self, sumfile):
+		self.show_time(self.label_elapsed, sumfile.elapsed)
+		self.show_time(self.label_estimated, sumfile.estimated)
+		self.show_time(self.label_remaining, sumfile.remaining)
 		
 class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
+		
+	def create_sfv_sum(self, file_list, outfilename, ignore_dirs, basedir):
+		print "not implemented yet"
+		yield False
 		
 	def create_md5_sum(self, file_list, outfilename, ignore_dirs, basedir):
 		self.window.set_title('Creating MD5 sums...')
@@ -166,11 +172,11 @@ class CreateWindow(BaseWindow):
 		md5file = CreateMd5File(outfilename, self.treeview_details, file_list, ignore_dirs, basedir)
 		self.show_files(md5file.files)
 		self.show_bytes(0)
-		self.show_md5_status(md5file)
+		self.show_status(md5file)
 		yield True
 
 		self.show_bytes(md5file.bytes) # force reading the sizes
-		self.show_md5_status(md5file)
+		self.show_status(md5file)
 		
 		# here we are finaly verifying the files
 		create = md5file.create()
@@ -178,7 +184,7 @@ class CreateWindow(BaseWindow):
 		tbytes = float(md5file.bytes)
 		if tbytes > 0 and tfiles > 0:
 			while create.next():
-				self.show_md5_status(md5file)
+				self.show_status(md5file)
 				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
 				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
 				yield True
@@ -186,19 +192,19 @@ class CreateWindow(BaseWindow):
 			print 'nothing to create'
 		
 		self.print_statistics(md5file)
-		self.md5file = md5file
+		self.sumfile = md5file
 		yield False
 		
-	def print_statistics(self, md5file):
+	def print_statistics(self, sumfile):
 		print '***********************************'
-		if md5file.filename:
-			print 'Status for:', os.path.abspath(md5file.filename)
+		if sumfile.filename:
+			print 'Status for:', os.path.abspath(sumfile.filename)
 		else:
 			print 'Status for: results not saved'
 		print '***********************************'
-		print 'Files:     ', md5file.files
-		print 'Bytes:     ', md5file.bytes
-		print 'Time:      ', md5file.elapsed
+		print 'Files:     ', sumfile.files
+		print 'Bytes:     ', sumfile.bytes
+		print 'Time:      ', sumfile.elapsed
 		print '***********************************'
 		
 class VerifyWindow(BaseWindow):
@@ -216,13 +222,13 @@ class VerifyWindow(BaseWindow):
 		self.window.show()
 		
 	def on_checkbutton_good_toggled(self, btn, *args):
-		self.md5file.filter_good(btn.get_active())
+		self.sumfile.filter_good(btn.get_active())
 	
 	def on_checkbutton_bad_toggled(self, btn, *args):
-		self.md5file.filter_bad(btn.get_active())
+		self.sumfile.filter_bad(btn.get_active())
 		
 	def on_checkbutton_missing_toggled(self, btn, *args):
-		self.md5file.filter_missing(btn.get_active())
+		self.sumfile.filter_missing(btn.get_active())
 		
 	def show_bad(self, bad):
 		self.label_bad.set_markup("<span foreground='#880000'>%d</span>" % bad)
@@ -233,28 +239,32 @@ class VerifyWindow(BaseWindow):
 	def show_missing(self, missing):
 		self.label_missing.set_markup("<span foreground='#888800'>%d</span>" % missing)
 		
-	def show_md5_status(self, md5file):
-		BaseWindow.show_md5_status(self, md5file)
-		self.show_bad(md5file.bad)
-		self.show_good(md5file.good)
+	def show_status(self, sumfile):
+		BaseWindow.show_status(self, sumfile)
+		self.show_bad(sumfile.bad)
+		self.show_good(sumfile.good)
 		
-	def print_statistics(self, md5file):
+	def print_statistics(self, sumfile):
 		print '***********************************'
-		print 'Status for:', os.path.abspath(md5file.filename)
+		print 'Status for:', os.path.abspath(sumfile.filename)
 		print '***********************************'
-		print 'Files:     ', md5file.files
-		print 'Good:      ', md5file.good
-		print 'Bad:       ', md5file.bad
-		print 'Missing:   ', md5file.missing
-		print 'Time:      ', md5file.elapsed
+		print 'Files:     ', sumfile.files
+		print 'Good:      ', sumfile.good
+		print 'Bad:       ', sumfile.bad
+		print 'Missing:   ', sumfile.missing
+		print 'Time:      ', sumfile.elapsed
 		print '***********************************'
-		if md5file.missing == 0 and md5file.bad == 0:
+		if sumfile.missing == 0 and sumfile.bad == 0:
 			print 'ALL FILES ARE OK'
-		elif md5file.bad == 0:
+		elif sumfile.bad == 0:
 			print 'There are missing files.'
 		else:
 			print 'There are BAD filles.'
 		print '***********************************'
+		
+	def verify_sfv_sum(self, filename):
+		print "not implemented yet"
+		yield False
 		
 	def verify_md5_sum(self, filename):
 		"""Cheks a file using idle time."""
@@ -264,12 +274,12 @@ class VerifyWindow(BaseWindow):
 		md5file = VerifyMd5File(filename, self.treeview_details)
 		self.show_files(md5file.files)
 		self.show_bytes(0)
-		self.show_md5_status(md5file)
+		self.show_status(md5file)
 		yield True
 
 		self.show_bytes(md5file.bytes) # force reading the sizes
 		self.show_missing(md5file.missing)
-		self.show_md5_status(md5file)
+		self.show_status(md5file)
 		
 		# here we are finaly verifying the files
 		verify = md5file.verify()
@@ -277,7 +287,7 @@ class VerifyWindow(BaseWindow):
 		tbytes = float(md5file.bytes)
 		if tbytes > 0 and tfiles > 0:
 			while verify.next():
-				self.show_md5_status(md5file)
+				self.show_status(md5file)
 				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
 				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
 				yield True
@@ -286,7 +296,7 @@ class VerifyWindow(BaseWindow):
 		
 		self.print_statistics(md5file)
 		self.frame_filter.set_sensitive(True)
-		self.md5file = md5file
+		self.sumfile = md5file
 		yield False
 		
 def main():
@@ -294,12 +304,13 @@ def main():
 
 	if platform_win32:
 		usage = """
-\t%prog [-x] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])
+\t%prog [-x] [--md5|--sfv] -cFILE
+\t%prog [-x] [--md5|--sfv] [-oFILE] [-bPATH] file1 [file2] [-i PATH1]
 \t%prog --register
 \t%prog --unregister
 \t%prog (-h|--help)"""
 	else:
-		usage = '%prog [-xg] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])'
+		usage = '%prog [-xg] [--md5|--sfv] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])'
 	parser = OptionParser(usage = usage)
 
 	# the interface
@@ -316,6 +327,12 @@ def main():
 		parser.add_option("", "--unregister", action = "store_true", 
 			dest="unregister", help="unregister from the REGISTRY")
 		
+	parser.add_option("", "--md5", action = "store_const", 
+		const = ALGO_MD5, dest="algo", help="check or create MD5's")
+	parser.add_option("", "--sfv", action = "store_const", 
+		const = ALGO_SFV, dest="algo", help="check or create SFV's")
+	parser.set_defaults(algo = ALGO_MD5)
+	
 	parser.add_option("-i", dest="ignore_dirs", action = "append",
 		help="ignore given dir", metavar="DIR", default = [])
 	parser.add_option("-x", action = "store_true", dest="expanded",
@@ -375,13 +392,19 @@ def main():
 			if options.infilename:
 				w = VerifyWindow(options.expanded, options.interface)
 				w.show_all()
-				idle_add(w.verify_md5_sum(options.infilename).next)
+				if options.algo == ALGO_MD5:
+					idle_add(w.verify_md5_sum(options.infilename).next)
+				else:
+					idle_add(w.verify_sfv_sum(options.infilename).next)
 			else:
 				w = CreateWindow(options.expanded, options.interface)
 				w.show_all()
 				if options.outfilename:
 					os.remove(options.outfilename)
-				idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
+				if options.algo == ALGO_MD5:
+					idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
+				else:
+					idle_add(w.create_sfv_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
 		gtk.main()
 	
 if __name__ == '__main__':
