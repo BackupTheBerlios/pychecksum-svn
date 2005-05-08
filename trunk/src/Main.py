@@ -120,10 +120,6 @@ class BaseWindow(object):
 		
 		self.frame_filter = xml.get_widget('frame_filter')
 		
-		self.notebook = xml.get_widget('notebook')
-		self.notebook.set_current_page(1)
-		self.notebook.set_show_tabs(False)
-		
 		xml.get_widget('expander_details').set_expanded(expanded)
 	
 	def on_expander_details_activate(self, widget):
