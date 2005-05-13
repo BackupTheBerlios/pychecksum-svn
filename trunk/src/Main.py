@@ -16,7 +16,7 @@ from optparse import OptionParser
 import sys
 from xml.dom.minidom import parse as dom_parse
 
-from Md5File import *
+from SumFile import *
 
 filesize = os.path.getsize
 
@@ -161,38 +161,34 @@ class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
 		
-	def create_sfv_sum(self, file_list, outfilename, ignore_dirs, basedir):
-		print "not implemented yet"
-		yield False
-		
-	def create_md5_sum(self, file_list, outfilename, ignore_dirs, basedir):
+	def create_sum(self, sum, file_list, outfilename, ignore_dirs, basedir):
 		self.window.set_title('Creating MD5 sums...')
 		yield True # let the appliction start
 		
-		md5file = CreateMd5File(outfilename, self.treeview_details, file_list, ignore_dirs, basedir)
-		self.show_files(md5file.files)
+		sumfile = CreateSumFile(sum, outfilename, self.treeview_details, file_list, ignore_dirs, basedir)
+		self.show_files(sumfile.files)
 		self.show_bytes(0)
-		self.show_status(md5file)
+		self.show_status(sumfile)
 		yield True
 
-		self.show_bytes(md5file.bytes) # force reading the sizes
-		self.show_status(md5file)
+		self.show_bytes(sumfile.bytes) # force reading the sizes
+		self.show_status(sumfile)
 		
 		# here we are finaly verifying the files
-		create = md5file.create()
-		tfiles = float(md5file.files)
-		tbytes = float(md5file.bytes)
+		create = sumfile.create()
+		tfiles = float(sumfile.files)
+		tbytes = float(sumfile.bytes)
 		if tbytes > 0 and tfiles > 0:
 			while create.next():
-				self.show_status(md5file)
-				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
-				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
+				self.show_status(sumfile)
+				self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
+				self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
 				yield True
 		else:
 			print 'nothing to create'
 		
-		self.print_statistics(md5file)
-		self.sumfile = md5file
+		self.print_statistics(sumfile)
+		self.sumfile = sumfile
 		yield False
 		
 	def print_statistics(self, sumfile):
@@ -262,41 +258,37 @@ class VerifyWindow(BaseWindow):
 			print 'There are BAD filles.'
 		print '***********************************'
 		
-	def verify_sfv_sum(self, filename):
-		print "not implemented yet"
-		yield False
-		
-	def verify_md5_sum(self, filename):
+	def verify_sum(self, sum, filename):
 		"""Cheks a file using idle time."""
 		self.window.set_title('Checking: %s (from %s)' %(os.path.basename(filename), os.path.dirname(os.path.abspath(filename))))
 		yield True # let the appliction start
 		
-		md5file = VerifyMd5File(filename, self.treeview_details)
-		self.show_files(md5file.files)
+		sumfile = VerifySumFile(sum, filename, self.treeview_details)
+		self.show_files(sumfile.files)
 		self.show_bytes(0)
-		self.show_status(md5file)
+		self.show_status(sumfile)
 		yield True
 
-		self.show_bytes(md5file.bytes) # force reading the sizes
-		self.show_missing(md5file.missing)
-		self.show_status(md5file)
+		self.show_bytes(sumfile.bytes) # force reading the sizes
+		self.show_missing(sumfile.missing)
+		self.show_status(sumfile)
 		
 		# here we are finaly verifying the files
-		verify = md5file.verify()
-		tfiles = float(md5file.files)
-		tbytes = float(md5file.bytes)
+		verify = sumfile.verify()
+		tfiles = float(sumfile.files)
+		tbytes = float(sumfile.bytes)
 		if tbytes > 0 and tfiles > 0:
 			while verify.next():
-				self.show_status(md5file)
-				self.show_progress(self.progress_files, md5file.vfiles / tfiles)
-				self.show_progress(self.progress_bytes, md5file.vbytes / tbytes)
+				self.show_status(sumfile)
+				self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
+				self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
 				yield True
 		else:
 			print 'nothing to check'
 		
-		self.print_statistics(md5file)
+		self.print_statistics(sumfile)
 		self.frame_filter.set_sensitive(True)
-		self.sumfile = md5file
+		self.sumfile = sumfile
 		yield False
 		
 def main():
@@ -368,22 +360,29 @@ def main():
 			finished = True
 
 	if not finished:
+		if options.algo == ALGO_MD5:
+			sum = Md5File()
+		else:
+			sum = SfvFile()
+			
 		if options.singlefile:
-			# create md5 for a single file
+			# create sum for a single file
 			basedir = os.path.dirname(options.singlefile)
 			outfilename = options.singlefile + ".md5"
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
-			idle_add(w.create_md5_sum([options.singlefile], outfilename, None, basedir).next)
+			idle_add(w.create_sum(sum, [options.singlefile], outfilename, None, basedir).next)
+		
 		elif options.singledir:
-			# create md5 for a single dir
+			# create sum for a single dir
 			basedir = '.'
 			options.singledir = options.singledir.rstrip("\\").rstrip("/").rstrip('"')
 			outfilename = os.path.join(options.singledir, os.path.basename(options.singledir)) + ".md5"
 			os.remove(outfilename)
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
-			idle_add(w.create_md5_sum([options.singledir], outfilename, options.ignore_dirs, basedir).next)
+			idle_add(w.create_sum(sum, [options.singledir], outfilename, options.ignore_dirs, basedir).next)
+		
 		else:
 			if len(args) == 0 and options.infilename == None:
 				parser.error('use -cFILE or provide a list of files')
@@ -392,19 +391,14 @@ def main():
 			if options.infilename:
 				w = VerifyWindow(options.expanded, options.interface)
 				w.show_all()
-				if options.algo == ALGO_MD5:
-					idle_add(w.verify_md5_sum(options.infilename).next)
-				else:
-					idle_add(w.verify_sfv_sum(options.infilename).next)
+				idle_add(w.verify_sum(sum, options.infilename).next)
+			
 			else:
 				w = CreateWindow(options.expanded, options.interface)
 				w.show_all()
 				if options.outfilename:
 					os.remove(options.outfilename)
-				if options.algo == ALGO_MD5:
-					idle_add(w.create_md5_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
-				else:
-					idle_add(w.create_sfv_sum(args, options.outfilename, options.ignore_dirs, options.basedir).next)
+				idle_add(w.create_sum(sum, args, options.outfilename, options.ignore_dirs, options.basedir).next)
 		gtk.main()
 	
 if __name__ == '__main__':
