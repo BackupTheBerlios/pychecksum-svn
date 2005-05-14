@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.5.dtd">
 <!-- Project file for project PyCheckSum -->
-<!-- Saved: 2005-04-14, 08:11:23 -->
+<!-- Saved: 2005-05-14, 10:44:00 -->
 <!-- Copyright (C) 2005 Ionutz Borcoman, borco@borco.net -->
 <Project version="3.5">
   <Description></Description>
@@ -15,7 +15,11 @@
     </Source>
     <Source>
       <Dir>src</Dir>
-      <Name>Md5File.py</Name>
+      <Name>Register.py</Name>
+    </Source>
+    <Source>
+      <Dir>src</Dir>
+      <Name>SumFile.py</Name>
     </Source>
   </Sources>
   <Forms>
