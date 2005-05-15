@@ -125,7 +125,7 @@ class SumFile(object):
 		self._init_treeview(treeview, sum.name)
 		self._files = None #total number of files to be checked
 		self._bytes = None #total size of files to be checked
-		self._start = 0 
+		self._start = time() #stores the start time 
 		self._missing = 0 #number of missing files
 		self._show_missing = True
 		self._current = None #currently checked file
@@ -280,7 +280,6 @@ class VerifySumFile(SumFile):
 		
 	def verify(self):
 		compute = self._sum.compute
-		self._start = time()
 		self._vbytes = 0
 		self._vfiles = 0
 		
@@ -373,7 +372,6 @@ class CreateSumFile(SumFile):
 		writeln = self._sum.writeln
 		writehdr = self._sum.writehdr
 		
-		self._start = time()
 		self._vbytes = 0
 		self._vfiles = 0
 		
