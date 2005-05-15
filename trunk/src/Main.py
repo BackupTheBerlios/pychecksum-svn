@@ -9,6 +9,7 @@ ALGO_MD5 = "md5"
 ALGO_SFV = "sfv"
 
 import gtk
+import pango
 from gobject import idle_add as idle_add
 import gtk.glade
 import os.path
@@ -113,6 +114,9 @@ class BaseWindow(object):
 		self.label_estimated = xml.get_widget('label_estimated')
 		self.label_remaining = xml.get_widget('label_remaining')
 		
+		self.label_current = xml.get_widget('label_current')
+		self.label_current.set_ellipsize(pango.ELLIPSIZE_START)
+		
 		self.treeview_details = xml.get_widget('treeview_details')
 		
 		self.vbox_details = xml.get_widget('vbox_details')
@@ -160,6 +164,8 @@ class BaseWindow(object):
 	def show_all_progress(self, sumfile, tfiles, tbytes):
 		self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
 		self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
+		
+		self.label_current.set_label(sumfile.current)
 		
 		s = '%d%%' % (100. * sumfile.vbytes / tbytes)
 		if sumfile.filename:
