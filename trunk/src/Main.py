@@ -157,12 +157,17 @@ class BaseWindow(object):
 		self.show_time(self.label_estimated, sumfile.estimated)
 		self.show_time(self.label_remaining, sumfile.remaining)
 		
+	def show_all_progress(self, sumfile, tfiles, tbytes):
+		self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
+		self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
+		self.window.set_title('%d%% - %s' % (100. * sumfile.vbytes / tbytes, os.path.basename(sumfile.filename)))
+		
 class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
 		
 	def create_sum(self, sum, file_list, outfilename, ignore_dirs, basedir):
-		self.window.set_title('Creating MD5 sums...')
+		self.window.set_title('Creating checksums...')
 		yield True # let the appliction start
 		
 		sumfile = CreateSumFile(sum, outfilename, self.treeview_details, file_list, ignore_dirs, basedir)
@@ -181,8 +186,7 @@ class CreateWindow(BaseWindow):
 		if tbytes > 0 and tfiles > 0:
 			while create.next():
 				self.show_status(sumfile)
-				self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
-				self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
+				self.show_all_progress(sumfile, tfiles, tbytes)
 				yield True
 		else:
 			print 'nothing to create'
@@ -260,7 +264,7 @@ class VerifyWindow(BaseWindow):
 		
 	def verify_sum(self, sum, filename):
 		"""Cheks a file using idle time."""
-		self.window.set_title('Checking: %s (from %s)' %(os.path.basename(filename), os.path.dirname(os.path.abspath(filename))))
+		self.window.set_title('0% - ' + os.path.basename(filename))
 		yield True # let the appliction start
 		
 		sumfile = VerifySumFile(sum, filename, self.treeview_details)
@@ -280,8 +284,7 @@ class VerifyWindow(BaseWindow):
 		if tbytes > 0 and tfiles > 0:
 			while verify.next():
 				self.show_status(sumfile)
-				self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
-				self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
+				self.show_all_progress(sumfile, tfiles, tbytes)
 				yield True
 		else:
 			print 'nothing to check'

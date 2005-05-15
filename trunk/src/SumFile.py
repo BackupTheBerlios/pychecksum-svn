@@ -121,13 +121,14 @@ class Md5File(object):
 class SumFile(object):
 	def __init__(self, sum, filename, treeview):
 		self._sum = sum
+		self._filename = filename #file to be checked or where to store data
 		self._init_treeview(treeview, sum.name)
-		self._filename = filename
-		self._files = None
-		self._bytes = None
-		self._start = 0
-		self._missing = 0
+		self._files = None #total number of files to be checked
+		self._bytes = None #total size of files to be checked
+		self._start = 0 
+		self._missing = 0 #number of missing files
 		self._show_missing = True
+		self._current = None #currently checked file
 	
 	def _init_treeview(self, treeview, label):
 		self._treeview = treeview
@@ -207,10 +208,10 @@ class SumFile(object):
 	files = property(get_files)
 	bytes = property(get_bytes)
 	filename = property(lambda self: self._filename)
-
 	missing = property(lambda self: self._missing)
 	vfiles = property(lambda self: self._vfiles)
 	vbytes = property(lambda self: self._vbytes)
+	current = property(lambda self: self._current)
 	elapsed = property(get_elapsed)
 	estimated = property(get_estimated)
 	remaining = property(get_remaining)
@@ -284,6 +285,7 @@ class VerifySumFile(SumFile):
 		self._vfiles = 0
 		
 		for name, (osum, iter) in self._files.items():
+			self._current = name
 			generator = compute(name)
 			csum, bytes = generator.next()
 			self._vbytes += bytes
@@ -384,6 +386,7 @@ class CreateSumFile(SumFile):
 		
 		for name in self._ordered:
 			(osum, iter, relname) = self._files[name]
+			self._current = relname
 			generator = compute(name)
 			csum, bytes = generator.next()
 			self._vbytes += bytes
