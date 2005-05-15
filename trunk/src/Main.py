@@ -160,7 +160,11 @@ class BaseWindow(object):
 	def show_all_progress(self, sumfile, tfiles, tbytes):
 		self.show_progress(self.progress_files, sumfile.vfiles / tfiles)
 		self.show_progress(self.progress_bytes, sumfile.vbytes / tbytes)
-		self.window.set_title('%d%% - %s' % (100. * sumfile.vbytes / tbytes, os.path.basename(sumfile.filename)))
+		
+		s = '%d%%' % (100. * sumfile.vbytes / tbytes)
+		if sumfile.filename:
+			s += ' - ' + os.path.basename(sumfile.filename)
+		self.window.set_title(s)
 		
 class CreateWindow(BaseWindow):
 	def show_all(self):
@@ -400,7 +404,10 @@ def main():
 				w = CreateWindow(options.expanded, options.interface)
 				w.show_all()
 				if options.outfilename:
-					os.remove(options.outfilename)
+					try:
+						os.remove(options.outfilename)
+					except OSError:
+						pass
 				idle_add(w.create_sum(sum, args, options.outfilename, options.ignore_dirs, options.basedir).next)
 		gtk.main()
 	
