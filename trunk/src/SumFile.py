@@ -153,10 +153,15 @@ class SumFile(object):
 	def _read_size(self):
 		self.get_files() # make sure the md5 was read
 		files = self._files
+		ordered = self._ordered
 		bytes = 0
 		missing = 0
+
+		mo = [] # missing from ordered
 		
-		for name, value in files.items():
+		for i in xrange(len(ordered)):
+			name = ordered[i]
+			value = files[name]
 			sum = value[0]
 			iter = value[1]
 			try:
@@ -165,9 +170,39 @@ class SumFile(object):
 				missing += 1
 				self._model.set_value(iter, 0, STOCK_MISSING)
 				del files[name] # we remove them so we don't check for them a second time
+				mo.append(i)
 				
+		# updated index - we increase it everytime we pop an item
+		udi = 0
+		for i in mo:
+			ordered.pop(i-udi)
+			udi += 1
+			
 		self._missing = missing
 		self._bytes = bytes
+		
+	def _rel_path(self, name, basedir):
+		abs_base = abspath(basedir)
+		abs_name = abspath(name)
+		c = commonprefix((abs_name, abs_base))
+		if c:
+			m = abs_name[len(c):]
+			if m[0] in ('\\', '/'):
+				m = m[1:]
+		else:
+			m = abs_name
+		return m
+		
+	def _add_file(self, files, ordered, name, basedir, sum = None):
+		"""Store 'name' in the 'files' dict. To remember
+		the original order, we store the it in the
+		'ordered' vector, too. Ordered stores only the 
+		name, while files will store more, like MD5's or
+		CRC32's."""
+		rel_name = self._rel_path(name, basedir)
+		iter = self._model.append((None, rel_name)) #add to the tree (no icon, relative name)
+		files[name] = (sum, iter, rel_name)
+		ordered.append(name)
 		
 	def get_files(self):
 		# We call _read_contents only if 
@@ -259,17 +294,18 @@ class VerifySumFile(SumFile):
 		self._filter()
 
 	def _read_contents(self):
-		d = dirname(self._filename)
 		files = {}
+		ordered = []
+		
+		d = dirname(self._filename)
 		f = file(self._filename)
+		
 		so = self._sum # _s_um _o_bject
 		model = self._model
 		for line in f:
 			sum, name = so.readln(line)
 			if sum:
-				abs_name = abspath(join(d, name))
-				iter = model.append((None, abs_name))
-				files[abs_name] = (sum, iter)
+				self._add_file(files, ordered, abspath(join(d, name)), d, sum)
 		f.close()
 		
 		self._vbytes = 0
@@ -277,14 +313,16 @@ class VerifySumFile(SumFile):
 		self._good = 0
 		self._bad = 0
 		self._files = files
+		self._ordered = ordered
 		
 	def verify(self):
 		compute = self._sum.compute
 		self._vbytes = 0
 		self._vfiles = 0
 		
-		for name, (osum, iter) in self._files.items():
-			self._current = name
+		for name in self._ordered:
+			(osum, iter, relname) = self._files[name]
+			self._current = relname
 			generator = compute(name)
 			csum, bytes = generator.next()
 			self._vbytes += bytes
@@ -320,52 +358,36 @@ class CreateSumFile(SumFile):
 		else:
 			self._basedir = ""
 
-	def _rel_path(self, name, basedir):
-		abs_base = abspath(basedir)
-		abs_name = abspath(name)
-		c = commonprefix((abs_name, abs_base))
-		if c:
-			m = abs_name[len(c):]
-			if m[0] in ('\\', '/'):
-				m = m[1:]
-		else:
-			m = abs_name
-		return m
-		
-	def _add_file(self, name, basedir):
-		rel_name = self._rel_path(name, basedir)
-		iter = self._model.append((None, rel_name))
-		self._files[name] = (None, iter, rel_name)
-		self._ordered.append(name)
-		
 	def _filter_dirs(self, dirs):
 		for ignore in self._ignore_dirs:
 			if ignore in dirs:
 				dirs.remove(ignore)
 				
-	def _read_contents_dir(self, basedir):
-		for root, dirs, files in os.walk(basedir):
-			files.sort()
-			dirs.sort()
-			for name in files:
-				self._add_file(join(root, name), basedir)
-			self._filter_dirs(dirs)
+	def _read_contents_dir(self, files, ordered, basedir):
+		for r, d, f in os.walk(basedir):
+			f.sort()
+			d.sort()
+			for name in f:
+				self._add_file(files, ordered, join(r, name), basedir)
+			self._filter_dirs(d)
 				
 	def _read_contents(self):
-		self._files = {}
-		self._ordered = []
+		files = {}
+		ordered = []
 		
 		for name in self._file_list:
 			if isfile(name):
-				self._add_file(name, self._basedir)
+				self._add_file(files, ordered, name, self._basedir)
 			elif isdir(name):
-				self._read_contents_dir(name)
+				self._read_contents_dir(files, ordered, name)
 			else:
 				print "Can't find file or dir: '%s'" % name
 				self._model.append((STOCK_MISSING, name))
 				
 		self._vbytes = 0
 		self._vfiles = 0
+		self._ordered = ordered
+		self._files = files
 		
 	def create(self):
 		compute = self._sum.compute
