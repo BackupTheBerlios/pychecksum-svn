@@ -375,13 +375,15 @@ def main():
 	if not finished:
 		if options.algo == ALGO_MD5:
 			sum = Md5File()
+			ext_output = ".md5"
 		else:
 			sum = SfvFile()
+			ext_output = ".sfv"
 			
 		if options.singlefile:
 			# create sum for a single file
 			basedir = os.path.dirname(options.singlefile)
-			outfilename = options.singlefile + ".md5"
+			outfilename = options.singlefile + ext_output
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
 			idle_add(w.create_sum(sum, [options.singlefile], outfilename, None, basedir).next)
@@ -390,8 +392,11 @@ def main():
 			# create sum for a single dir
 			basedir = '.'
 			options.singledir = options.singledir.rstrip("\\").rstrip("/").rstrip('"')
-			outfilename = os.path.join(options.singledir, os.path.basename(options.singledir)) + ".md5"
-			os.remove(outfilename)
+			outfilename = os.path.join(options.singledir, os.path.basename(options.singledir)) + ext_output
+			try:
+				os.remove(outfilename)
+			except OSError:
+				pass
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
 			idle_add(w.create_sum(sum, [options.singledir], outfilename, options.ignore_dirs, basedir).next)
@@ -422,3 +427,4 @@ if __name__ == '__main__':
 	sys.path.append(moduledir)
 	GLADE_DIR = moduledir
 	main()
+
