@@ -241,13 +241,13 @@ class VerifyWindow(BaseWindow):
 		self.sumfile.filter_missing(btn.get_active())
 		
 	def show_bad(self, bad):
-		self.label_bad.set_markup("<span foreground='#880000'>%d</span>" % bad)
+		self.label_bad.set_markup("<span foreground='#880000' weight='bold'>%d</span>" % bad)
 		
 	def show_good(self, good):
-		self.label_good.set_markup("<span foreground='#008800'>%d</span>" % good)
+		self.label_good.set_markup("<span foreground='#008800' weight='bold'>%d</span>" % good)
 		
 	def show_missing(self, missing):
-		self.label_missing.set_markup("<span foreground='#888800'>%d</span>" % missing)
+		self.label_missing.set_markup("<span foreground='#888800' weight='bold'>%d</span>" % missing)
 		
 	def show_status(self, sumfile):
 		BaseWindow.show_status(self, sumfile)
