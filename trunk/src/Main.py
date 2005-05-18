@@ -201,10 +201,14 @@ class CreateWindow(BaseWindow):
 		else:
 			print 'nothing to create'
 		
+		self.show_statistics(sumfile, self.label_current)
 		if verbose:
 			self.print_statistics(sumfile)
 		self.sumfile = sumfile
 		yield False
+		
+	def show_statistics(self, sumfile, label):
+		label.set_markup("<span foreground='#008800' weight='bold'>DONE</span>")
 		
 	def print_statistics(self, sumfile):
 		print '***********************************'
@@ -255,6 +259,14 @@ class VerifyWindow(BaseWindow):
 		self.show_bad(sumfile.bad)
 		self.show_good(sumfile.good)
 		
+	def show_statistics(self, sumfile, label):
+		if sumfile.missing == 0 and sumfile.bad == 0:
+			label.set_markup("<span foreground='#008800' weight='bold'>ALL FILES ARE OK</span>")
+		elif sumfile.bad == 0:
+			label.set_markup("<span foreground='#888800' weight='bold'>There are missing files</span>")
+		else:
+			label.set_markup("<span foreground='#880000' weight='bold'>There are BAD filles</span>")
+		
 	def print_statistics(self, sumfile):
 		print '***********************************'
 		print 'Status for:', os.path.abspath(sumfile.filename)
@@ -300,6 +312,7 @@ class VerifyWindow(BaseWindow):
 		else:
 			print 'nothing to check'
 		
+		self.show_statistics(sumfile, self.label_current)
 		if verbose:
 			self.print_statistics(sumfile)
 		self.frame_filter.set_sensitive(True)
