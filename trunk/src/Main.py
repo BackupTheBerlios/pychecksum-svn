@@ -176,7 +176,7 @@ class CreateWindow(BaseWindow):
 	def show_all(self):
 		self.window.show()
 		
-	def create_sum(self, sum, file_list, outfilename, ignore_dirs, basedir):
+	def create_sum(self, sum, file_list, outfilename, ignore_dirs, basedir, verbose):
 		self.window.set_title('Creating checksums...')
 		yield True # let the appliction start
 		
@@ -201,7 +201,8 @@ class CreateWindow(BaseWindow):
 		else:
 			print 'nothing to create'
 		
-		self.print_statistics(sumfile)
+		if verbose:
+			self.print_statistics(sumfile)
 		self.sumfile = sumfile
 		yield False
 		
@@ -272,7 +273,7 @@ class VerifyWindow(BaseWindow):
 			print 'There are BAD filles.'
 		print '***********************************'
 		
-	def verify_sum(self, sum, filename):
+	def verify_sum(self, sum, filename, verbose):
 		"""Cheks a file using idle time."""
 		self.window.set_title('0% - ' + os.path.basename(filename))
 		yield True # let the appliction start
@@ -299,7 +300,8 @@ class VerifyWindow(BaseWindow):
 		else:
 			print 'nothing to check'
 		
-		self.print_statistics(sumfile)
+		if verbose:
+			self.print_statistics(sumfile)
 		self.frame_filter.set_sensitive(True)
 		self.sumfile = sumfile
 		yield False
@@ -309,13 +311,13 @@ def main():
 
 	if platform_win32:
 		usage = """
-\t%prog [-x] [--md5|--sfv] -cFILE
-\t%prog [-x] [--md5|--sfv] [-oFILE] [-bPATH] file1 [file2] [-i PATH1]
+\t%prog [-xv] [--md5|--sfv] -cFILE
+\t%prog [-xv] [--md5|--sfv] [-oFILE] [-bPATH] file1 [file2] [-i PATH1]
 \t%prog --register
 \t%prog --unregister
 \t%prog (-h|--help)"""
 	else:
-		usage = '%prog [-xg] [--md5|--sfv] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])'
+		usage = '%prog [-xvg] [--md5|--sfv] (-cFILE | [-oFILE] [-bPATH] file1 [file2] [-i PATH1])'
 	parser = OptionParser(usage = usage)
 
 	# the interface
@@ -342,6 +344,8 @@ def main():
 		help="ignore given dir", metavar="DIR", default = [])
 	parser.add_option("-x", action = "store_true", dest="expanded",
 		help="expand the details on stat-up", default = False)
+	parser.add_option("-v", action = "store_true", dest="verbose",
+		help="print status on the console", default = False)
 	parser.add_option("-c", dest="infilename",
 		help="verify checksums stored in FILE", metavar="FILE")
 	parser.add_option("-o", dest="outfilename",
@@ -386,7 +390,7 @@ def main():
 			outfilename = options.singlefile + ext_output
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
-			idle_add(w.create_sum(sum, [options.singlefile], outfilename, None, basedir).next)
+			idle_add(w.create_sum(sum, [options.singlefile], outfilename, None, basedir, options.verbose).next)
 		
 		elif options.singledir:
 			# create sum for a single dir
@@ -399,7 +403,7 @@ def main():
 				pass
 			w = CreateWindow(options.expanded, options.interface)
 			w.show_all()
-			idle_add(w.create_sum(sum, [options.singledir], outfilename, options.ignore_dirs, basedir).next)
+			idle_add(w.create_sum(sum, [options.singledir], outfilename, options.ignore_dirs, basedir, options.verbose).next)
 		
 		else:
 			if len(args) == 0 and options.infilename == None:
@@ -409,7 +413,7 @@ def main():
 			if options.infilename:
 				w = VerifyWindow(options.expanded, options.interface)
 				w.show_all()
-				idle_add(w.verify_sum(sum, options.infilename).next)
+				idle_add(w.verify_sum(sum, options.infilename, options.verbose).next)
 			
 			else:
 				w = CreateWindow(options.expanded, options.interface)
@@ -419,7 +423,7 @@ def main():
 						os.remove(options.outfilename)
 					except OSError:
 						pass
-				idle_add(w.create_sum(sum, args, options.outfilename, options.ignore_dirs, options.basedir).next)
+				idle_add(w.create_sum(sum, args, options.outfilename, options.ignore_dirs, options.basedir, options.verbose).next)
 		gtk.main()
 	
 if __name__ == '__main__':
