@@ -65,10 +65,22 @@ def main(gladedir, platform_win32):
 			parser.error('please use only one of the --register or --unregister, but not both')
 
 		if options.register:
-			Register.register(os.path.abspath(__file__))
+			Register.SumFile(script = os.path.abspath(__file__)).register()
+			Register.SumFile(script = os.path.abspath(__file__),
+							 args = '--sfv',
+							 menu_create = 'Generate SFV checksum',
+							 extension = '.sfv',
+							 info = 'sfv checksum',
+							 check_key = 'sfvfile'
+							 ).register()
 			finished = True
 		elif options.unregister:
-			Register.unregister()
+			Register.SumFile().unregister()
+			Register.SumFile(menu_create = 'Generate SFV checksum',
+							 extension = '.sfv',
+							 info = 'sfv checksum',
+							 check_key = 'sfvfile'
+							 ).unregister()
 			finished = True
 
 	if not finished:

@@ -5,79 +5,82 @@ import _winreg
 import os
 import sys
 
-CONTEXT_MENU_CHECK = 'Verify'
-CONTEXT_MENU_CREATE = 'Generate MD5 sum'
+class SumFile(object):
+	def __init__(self,
+				 script = '',
+				 args = '',
+				 menu_check = 'Verify',
+				 menu_create = 'Generate MD5 checksum',
+				 extension = '.md5',
+				 icon = 'shell32.dll,104',
+				 info = 'md5 checksum',
+				 check_key = 'md5file'):
+		
+		self.__menu_check = menu_check
+		self.__menu_create = menu_create
+		self.__extension = extension
+		self.__icon = icon
+		self.__info = info
+		self.__check_key = check_key
 
-MD5_EXTENSION = '.md5'
-MD5_ICON = 'shell32.dll,104'
-MD5_INFO = 'md5 sum'
+		self.__check_command_key = 'shell\\%s\\command' % menu_check
+		self.__check_command = '%s\\pythonw.exe  "%s" %s -c "%%1"' % (sys.exec_prefix, script, args)
+		
+		self.__create_command_key_uninstall = 'shell\\%s' % menu_create
+		self.__create_command_key = 'shell\\%s\\command' % menu_create
+		self.__create_command_file = '%s\\pythonw.exe "%s" %s -f "%%1"' % (sys.exec_prefix, script, args)
+		self.__create_command_dir = '%s\\pythonw.exe "%s" %s -d "%%1"' % (sys.exec_prefix, script, args)
+		
+	def register(self):
+		print "Registering %s ..." % self.__extension[1:], 
 
-REGISTRY_CHECK_KEY = 'md5file'
-REGISTRY_CHECK_COMMAND_KEY = 'shell\\%s\\command' % CONTEXT_MENU_CHECK
+		h = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT, self.__extension)
+		_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, self.__check_key)
 
-REGISTRY_CREATE_COMMAND_KEY_UNINSTALL = 'shell\\%s' % CONTEXT_MENU_CREATE
-REGISTRY_CREATE_COMMAND_KEY = 'shell\\%s\\command' % CONTEXT_MENU_CREATE
+		h = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT, self.__check_key)
+		_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, self.__info)
 
-def update_constants(script):
-	global REGISTRY_CHECK_COMMAND
-	global REGISTRY_CREATE_COMMAND_FILE
-	global REGISTRY_CREATE_COMMAND_DIRECTORY
+		h1 = _winreg.CreateKey(h, 'DefaultIcon')
+		_winreg.SetValueEx(h1, None, 0, _winreg.REG_SZ, self.__icon)
 
-	REGISTRY_CHECK_COMMAND = '%s\\pythonw.exe  "%s" -c "%%1"' % (sys.exec_prefix, script)
-	REGISTRY_CREATE_COMMAND_FILE = '%s\\pythonw.exe "%s" -f "%%1"' % (sys.exec_prefix, script)
-	REGISTRY_CREATE_COMMAND_DIRECTORY = '%s\\pythonw.exe "%s" -d "%%1"' % (sys.exec_prefix, script)
-	
-def register(script):
-	update_constants(script)
-	print "Registering ...",
+		h1 = _winreg.CreateKey(h, self.__check_command_key)
+		_winreg.SetValueEx(h1, None, 0, _winreg.REG_SZ, self.__check_command)
 
-	h = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT, MD5_EXTENSION)
-	_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, REGISTRY_CHECK_KEY)
+		# write the handler for single files
+		h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, '*')
+		h = _winreg.CreateKey(h, self.__create_command_key)
+		_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, self.__create_command_file)
 
-	h = _winreg.CreateKey(_winreg.HKEY_CLASSES_ROOT, REGISTRY_CHECK_KEY)
-	_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, MD5_INFO)
+		# write the handler for directories
+		h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, 'Directory')
+		h = _winreg.CreateKey(h, self.__create_command_key)
+		_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, self.__create_command_dir)
 
-	h1 = _winreg.CreateKey(h, 'DefaultIcon')
-	_winreg.SetValueEx(h1, None, 0, _winreg.REG_SZ, MD5_ICON)
+		print 'Done.'
 
-	h1 = _winreg.CreateKey(h, REGISTRY_CHECK_COMMAND_KEY)
-	_winreg.SetValueEx(h1, None, 0, _winreg.REG_SZ, REGISTRY_CHECK_COMMAND)
+	def __delete_key(self, base_key, sub_key):
+		try:
+			key = _winreg.OpenKey(base_key, sub_key)
+			while True:
+				# delete subkeys of the sub_key
+				try:
+					while True:
+						self.__delete_key(key, _winreg.EnumKey(key, 0))
+				except EnvironmentError:
+					break
+			_winreg.DeleteKey(base_key, sub_key)
+		except EnvironmentError:
+			pass
 
-	# write the handler for single files
-	h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, '*')
-	h = _winreg.CreateKey(h, REGISTRY_CREATE_COMMAND_KEY)
-	_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, REGISTRY_CREATE_COMMAND_FILE)
+	def unregister(self):
+		print "Unregistering %s ..." % self.__extension[1:], 
+		self.__delete_key(_winreg.HKEY_CLASSES_ROOT, self.__extension)
+		self.__delete_key(_winreg.HKEY_CLASSES_ROOT, self.__check_key)
 
-	# write the handler for directories
-	h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, 'Directory')
-	h = _winreg.CreateKey(h, REGISTRY_CREATE_COMMAND_KEY)
-	_winreg.SetValueEx(h, None, 0, _winreg.REG_SZ, REGISTRY_CREATE_COMMAND_DIRECTORY)
+		h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, '*')
+		self.__delete_key(h, self.__create_command_key_uninstall)
 
-	print 'Done.'
-
-def delete_key(base_key, sub_key):
-    try:
-        key = _winreg.OpenKey(base_key, sub_key)
-        while True:
-            # delete subkeys of the sub_key
-            try:
-                while True:
-                    delete_key(key, _winreg.EnumKey(key, 0))
-            except EnvironmentError:
-                break
-        _winreg.DeleteKey(base_key, sub_key)
-    except EnvironmentError:
-        pass
-
-def unregister():
-	print "Unregistering ...",
-	delete_key(_winreg.HKEY_CLASSES_ROOT, MD5_EXTENSION)
-	delete_key(_winreg.HKEY_CLASSES_ROOT, REGISTRY_CHECK_KEY)
-
-	h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, '*')
-	delete_key(h, REGISTRY_CREATE_COMMAND_KEY_UNINSTALL)
-
-	h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, 'Directory')
-	delete_key(h, REGISTRY_CREATE_COMMAND_KEY_UNINSTALL)
-	
-	print 'Done.'
+		h = _winreg.OpenKey(_winreg.HKEY_CLASSES_ROOT, 'Directory')
+		self.__delete_key(h, self.__create_command_key_uninstall)
+		
+		print 'Done.'
