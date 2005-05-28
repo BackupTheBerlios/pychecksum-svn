@@ -16,9 +16,12 @@ STOCK_MISSING = gtk.STOCK_DIALOG_WARNING #icon shown for missing files
 
 def time2human(t):
 	"""Returns t seconds as a human readable string."""
-	m = int(t)/60
+	h = int(t)/3600
+	m = (int(t)%3600)/60
 	s = t % 60
-	if m:
+	if h:
+		return "%d h %02d m %05.2f s" % (h,m,s)
+	elif m:
 		return "%d m %05.2f s" % (m,s)
 	return "%.2f s" % t
 	
