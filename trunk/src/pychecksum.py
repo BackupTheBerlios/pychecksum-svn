@@ -51,9 +51,9 @@ def main(gladedir, platform_win32):
 		help="compute paths relative to PATH", metavar="PATH")
 
 	parser.add_option("-f", dest="singlefile",
-		help="compute PATH's MD5 and store it in PATH.md5", metavar="PATH")
+		help="compute PATH's checksum and store it in PATH.{md5|sfv}", metavar="PATH")
 	parser.add_option("-d", dest="singledir",
-		help="compute PATH's MD5 and store it in PATH.md5", metavar="PATH")
+		help="compute PATH's checksum and store it in PATH.{md5|sfv}", metavar="PATH")
 	
 	(options, args) = parser.parse_args()	
 
