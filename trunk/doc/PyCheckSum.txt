@@ -1,3 +1,9 @@
+///////////////////////////////////////////////////////////////////////////
+To convert this file to HTML, you can use the command:
+
+$ asciidoc -b css-embedded PyCheckSum.txt
+///////////////////////////////////////////////////////////////////////////
+
 = PyCheckSum - checksum generator and verifier
 
 PyCheckSum is a simple python program for generating and 
@@ -194,4 +200,36 @@ After finishing the processing, the checkboxes from the 'Details' will be
 active and you will be able to filter what files to show and what to hide.
 
 image:MainWindow04.png[Details - Filtered expanded view]
+
+== TODO List
+
+(extracted from *.todo*)
+
+///////////////////////////////////////////////////////////////////////////
+The included ../TODO file can be generated for inclusion as a table or
+bulleted list. To include it as a bulleted list use:
+
+$ todo --use-format generated=asciidoc_list --TODO --filter all,-done
+
+To use it to create a table use:
+
+$ todo --use-format generated=asciidoc_table --TODO --filter all,-done \
+    --date-format "%Y/%m/%d"
+
+The contents of the .todorc is:
+
+format asciidoc_table=%n | %F | %t | %c | %d | %D | %p\n
+format asciidoc_list=* %t (priority = %p)\n
+///////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////
+include::../TODO[]
+///////////////////////////////////////////////////////////////////////////
+
+[format="dsv",separator="|",grid="all"]
+.3`40.6.~
+No. | Task | Created | Priority
+~~~~~~~~~~~~~~~~~~~~~~~~~
+include::../TODO[]
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
