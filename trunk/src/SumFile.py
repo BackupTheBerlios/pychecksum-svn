@@ -67,7 +67,7 @@ class SfvFile(object):
 		if line[0] == ';':
 			return (None, None)
 		line = line.rstrip('\n')
-		sum = line[-8:]
+		sum = line[-8:].upper() # make sure the sum has only upper case chars
 		name = line[:-9]
 		return (sum, name)
 	
@@ -102,7 +102,7 @@ class Md5File(object):
 				m.update(l)
 				yield (None, len(l))
 				l = f.read(line_size)
-			yield (m.hexdigest(), 0)
+			yield (m.hexdigest().upper(), 0)
 		except IOError, e:
 			print e
 			yield ("", 0)
@@ -111,7 +111,7 @@ class Md5File(object):
 		out.write("%s  %s\n" % (sum, name.replace('\\','/')))
 		
 	def readln(line):
-		sum = line[:32]
+		sum = line[:32].upper() # make sure the sum has only upper case chars
 		name = line[34:-1].strip() # we ignore the binary flag
 		return (sum, name)
 	
